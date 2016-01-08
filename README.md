@@ -47,7 +47,20 @@ you can use `\`
 
 A table contains key value pairs, separated by commas. Keys can be of any type, as well as the values. 
 A line break is equivalent to a comma, empty lines get ignored.
-If no key is provided, the index will be treated as numeric key (starting from 0). Tables can be treated like arrays or like objects.
+If no key is provided, the index will be treated as numeric key (starting from 0), or, in case of a tagged table, the table's tag.
+
+```
+tag { ... }
+#Is equivalent to
+"tag": "tag" { ... }
+
+Foo
+#Is equivalent to
+0: "Foo"
+```
+
+
+Tables can be treated like arrays or like objects.
 
 ```
 MAYU : vocaloid {
