@@ -47,7 +47,8 @@ you can use `\`
 
 A table contains key value pairs, separated by commas. Keys can be of any type, as well as the values. 
 A line break is equivalent to a comma, empty lines get ignored.
-If no key is provided, the index will be treated as numeric key (starting from 0), or, in case of a tagged table, the table's tag.
+If no key is provided, the index will be treated as numeric key (starting from 0).
+Tagged tables will have their tag type treated as key, *but only if not in array context!*
 
 ```
 tag { ... }
