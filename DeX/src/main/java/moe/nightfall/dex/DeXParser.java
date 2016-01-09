@@ -9,7 +9,6 @@ import moe.nightfall.dex.DeXSerializable.SerializationMap;
 
 public class DeXParser {
 	
-	private String source;
 	private SerializationMap serialization = new SerializationMap();
 	
 	private DeXParser() {}
@@ -18,23 +17,20 @@ public class DeXParser {
 		return new DeXParser();
 	}
 	
-	public DeXParser source(File file) {
+	public DeXTable parse(File file) {
 		try {
-			this.source = String.join("\n", Files.readAllLines(Paths.get(file.toURI())));
+			return parse(String.join("\n", Files.readAllLines(Paths.get(file.toURI()))));
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		return this;
 	}
 	
-	public DeXParser source(String text) {
-		this.source = text;
-		return this;
+	public DeXTable parse(String text) {
+		return null;
 	}
 	
-	public DeXParser source(CharSequence cs) {
-		this.source = cs.toString();
-		return this;
+	public DeXTable source(CharSequence cs) {
+		return parse(cs.toString());
 	}
 	
 	public DeXParser setSerializationMap(SerializationMap map) {
@@ -42,14 +38,9 @@ public class DeXParser {
 		return this;
 	}
 	
-	public DeXParser serialize(String tag, Class<?> serializedClass) {
+	public DeXParser serializeAs(String tag, Class<?> serializedClass) {
 		serialization.put(tag, serializedClass);
 		return this;
-	}
-	
-	public DeXTable parse() {
-		source = null;
-		return null;
 	}
 	
 	public DeXTable serialize(Object o) {

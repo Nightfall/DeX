@@ -44,49 +44,65 @@ public final class DeX {
 	// Used for serialization
 	
 	public static Object toDeX(Object in) {
-		return toDeX(in, null);
+		return toDeX(in, SerializationMap.empty);
 	}
 	
 	public static Object toDeX(Object in, SerializationMap sel) {
+		if (in == null) return null;
 		if (isPrimitive(in)) return in;
 		
-		if (in instanceof Object[]) return arrayToTable((Object[])in);
-		if (in instanceof Iterable) return iterableToTable((Iterable<?>)in);
-		if (in instanceof Map) return mapToTable((Map<?, ?>)in);
+		if (in instanceof Object[]) return arrayToTable((Object[])in, sel);
+		if (in instanceof Iterable) return iterableToTable((Iterable<?>)in, sel);
+		if (in instanceof Map) return mapToTable((Map<?, ?>)in, sel);
 		
 		// Sanity check
 		if (in instanceof DeXTable) return in;
 		if (in instanceof DeXArray) return ((DeXArray)in).toDeXTable();
-		
-		String tag = "";
-		if (sel != null) {
-			tag = sel.tagFor(in.getClass());
-		}
-		
+
 		// Raw types because generics are too dump to handle this
-		return StaticSerialization.get((Class)in.getClass()).serialize(in, tag);
+		return StaticSerialization.get((Class)in.getClass()).serialize(in, sel);
 	}
 	
-	public static Object toJava(Class<?> target, DeXTable in) {
+	/** 
+	 * This ensures that the given objects is wrapped in a {@link DeXTable}
+	 * Don't call this method with anything other than primitives and {@link DeXTable}! 
+	 */
+	public static DeXTable ensure(Object in) {
+		if (in instanceof DeXTable) return (DeXTable) in;
+		else {
+			DeXTable table = new DeXTable(1, "");
+			table.append(0, in);
+			return table;
+		}
+	}
+	
+	public static Object toJava(Class<?> target, Object in) {
+		
+		if (in == null) return null;
+		if (isPrimitive(in)) return in;
+		DeXTable table = null;
+		if (in instanceof DeXTable) table = (DeXTable) in;
+		else if (in instanceof DeXArray) table = ((DeXArray) in).toDeXTable();
+		else return in;
 		
 		// Note that we can only deserialize to some default type. The method above can serialize anything.
-		if (target.isAssignableFrom(HashMap.class)) return in.copy();
+		if (target.isAssignableFrom(HashMap.class)) return table.copy();
 		
 		// We can cope with the most basic collections
 		// TODO What about Vector? Or is that thing even used nowadays?
-		if (target.isAssignableFrom(ArrayList.class)) return new ArrayList<>(tableToCollection(in));
-		if (target.isAssignableFrom(LinkedList.class)) return new LinkedList<>(tableToCollection(in));
-		if (target.isAssignableFrom(HashSet.class)) return new HashSet<>(tableToCollection(in));
+		if (target.isAssignableFrom(ArrayList.class)) return new ArrayList<>(tableToCollection(table));
+		if (target.isAssignableFrom(LinkedList.class)) return new LinkedList<>(tableToCollection(table));
+		if (target.isAssignableFrom(HashSet.class)) return new HashSet<>(tableToCollection(table));
 		
-		if (target.isArray()) return tableToCollection(in).toArray();
+		if (target.isArray()) return tableToCollection(table).toArray();
 		
-		if (target.isAssignableFrom(HashMap.class)) return tableToMap(in);
+		if (target.isAssignableFrom(HashMap.class)) return tableToMap(table);
 			
 		// Sanity check
-		if (target == DeXTable.class) return in;
-		if (target == DeXArray.class) return in.values();
+		if (target == DeXTable.class) return table;
+		if (target == DeXArray.class) return table.values();
 				
-		return StaticSerialization.get(target).deserialize(in);
+		return StaticSerialization.get(target).deserialize(table);
 	}
 	
 	/** Check if the supplied object is primitve, in hopefully decreasing order of popularity */
@@ -130,15 +146,15 @@ public final class DeX {
 		return map;
 	}
 	
-	public static DeXTable arrayToTable(Object[] array) {
+	public static DeXTable arrayToTable(Object[] array, SerializationMap sel) {
 		DeXTable table = new DeXTable(array.length, "");
 		for(int i = 0; i < array.length; i++) {
-			table.append(i, toDeX(array[i]));
+			table.append(i, toDeX(array[i], sel));
 		}
 		return table;
 	}
 	
-	public static DeXTable iterableToTable(Iterable<?> iterable) {
+	public static DeXTable iterableToTable(Iterable<?> iterable, SerializationMap sel) {
 		// We can't predict how long this thing is going to be
 		DeXTable table = new DeXTable(0, "");
 		Iterator<?> iterator = iterable.iterator();
@@ -146,14 +162,18 @@ public final class DeX {
 		int i = 0;
 		while (iterator.hasNext()) {
 			i++;
-			table.append(i, toDeX(iterator.next()));
+			table.append(i, toDeX(iterator.next(), sel));
 		}
 		
 		return table;
 	}
 	
-	public static DeXTable mapToTable(Map<?, ?> map) {
-		return new DeXTable(map);
+	public static DeXTable mapToTable(Map<?, ?> map, SerializationMap sel) {
+		DeXTable table = new DeXTable(map.size(), "");
+		for (Entry<Object, Object> entry : table.entrySet()) {
+			table.append(toDeX(entry.getKey(), sel), toDeX(entry.getValue(), sel));
+		}
+		return table;
 	}
 	
 	public static DeXTable getByTag(DeXIterable<?> iterable, String tag) {
