@@ -1,10 +1,16 @@
 package moe.nightfall.dex;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import moe.nightfall.dex.DeXSerializable.SerializationMap;
 
 public class DeXParser {
 	
-	private File source;
+	private String source;
+	private SerializationMap serialization = new SerializationMap();
 	
 	private DeXParser() {}
 	
@@ -13,19 +19,40 @@ public class DeXParser {
 	}
 	
 	public DeXParser source(File file) {
-		this.source = file;
+		try {
+			this.source = String.join("\n", Files.readAllLines(Paths.get(file.toURI())));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return this;
+	}
+	
+	public DeXParser source(String text) {
+		this.source = text;
+		return this;
+	}
+	
+	public DeXParser source(CharSequence cs) {
+		this.source = cs.toString();
+		return this;
+	}
+	
+	public DeXParser setSerializationMap(SerializationMap map) {
+		this.serialization = map;
 		return this;
 	}
 	
 	public DeXParser serialize(String tag, Class<?> serializedClass) {
+		serialization.put(tag, serializedClass);
 		return this;
 	}
 	
 	public DeXTable parse() {
+		source = null;
 		return null;
 	}
-
-	public File getSource() {
-		return source;
+	
+	public DeXTable serialize(Object o) {
+		return (DeXTable) DeX.toDeX(o, serialization);
 	}
 }

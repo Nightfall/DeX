@@ -4,14 +4,16 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DeXArray extends AbstractList<Object> implements DeXIterable<Integer> {
+public final class DeXArray extends AbstractList<Object> implements DeXIterable<Integer> {
 	
 	private List<Object> values;
 	private final String tag;
+	
+	private DeXTable table;
 
-	DeXArray(DeXTable underlying) {
+	DeXArray(DeXTable table) {
 		this.values = new ArrayList<>(values);
-		this.tag = underlying.tag();
+		this.tag = table.tag();
 	}
 	
 	@Override
@@ -34,5 +36,9 @@ public class DeXArray extends AbstractList<Object> implements DeXIterable<Intege
 	@Override
 	public int size() {
 		return values.size();
+	}
+	
+	public DeXTable toDeXTable() {
+		return new DeXTable(this);
 	}
 }

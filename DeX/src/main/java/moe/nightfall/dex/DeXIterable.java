@@ -3,7 +3,7 @@ package moe.nightfall.dex;
 import java.util.Collection;
 import java.util.Optional;
 
-public interface DeXIterable<E> extends Iterable<Object> {
+interface DeXIterable<E> extends Iterable<Object> {
 	
 	public Object get(E key);
 	
