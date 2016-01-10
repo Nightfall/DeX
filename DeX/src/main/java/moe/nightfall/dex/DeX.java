@@ -200,7 +200,28 @@ public final class DeX {
 	}
 	
 	public static String prettyPrint(DeXTable table) {
-		// TODO PRETTY
-		return "I'm pretty, the parrot!";
+		StringBuilder builder = new StringBuilder();
+		prettyPrint(table, builder, 2);
+		return builder.toString();
+	}
+	
+	private static void prettyPrint(DeXTable table, StringBuilder sb, int level) {
+		if (table.hasTag()) sb.append(table.tag).append(" {\n");
+		else sb.append("{\n");
+		for (Entry<Object, Object> entry : table.entrySet()) {
+			if (level > 0) for (int j = 0; j < level; j++) sb.append(" ");
+				
+			if (entry.getKey() instanceof DeXTable) {
+				prettyPrint((DeXTable) entry.getKey(), sb, level + 2);
+			} else sb.append(entry.getKey());
+			sb.append(" : ");
+			if (entry.getValue() instanceof DeXTable) {
+				prettyPrint((DeXTable) entry.getValue(), sb, level + 2);
+			} else sb.append(entry.getValue());
+			
+			sb.append("\n");
+		}
+		if (level > 0) for (int j = 0; j < level - 2; j++) sb.append(" "); 
+		sb.append("}\n");
 	}
 }

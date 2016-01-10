@@ -96,4 +96,9 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	public HashMap<Object, Object> copy() {
 		return new HashMap<>(this);
 	}
+	
+	@Override
+	public String toString() {
+		return DeX.prettyPrint(this);
+	}
 }

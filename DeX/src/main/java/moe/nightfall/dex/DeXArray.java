@@ -43,4 +43,9 @@ public final class DeXArray extends AbstractList<Object> implements DeXIterable<
 	public DeXTable toDeXTable() {
 		return table;
 	}
+	
+	@Override
+	public String toString() {
+		return DeX.prettyPrint(table);
+	}
 }
