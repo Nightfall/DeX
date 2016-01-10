@@ -2,6 +2,7 @@ package moe.nightfall.dex;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public final class DeXArray extends AbstractList<Object> implements DeXIterable<Integer> {
@@ -9,11 +10,12 @@ public final class DeXArray extends AbstractList<Object> implements DeXIterable<
 	private List<Object> values;
 	private final String tag;
 	
-	private DeXTable table;
+	final DeXTable table;
 
-	DeXArray(DeXTable table) {
+	DeXArray(DeXTable parent, Collection<?> values) {
 		this.values = new ArrayList<>(values);
-		this.tag = table.tag();
+		this.tag = parent.tag();
+		this.table = parent;
 	}
 	
 	@Override
@@ -39,6 +41,6 @@ public final class DeXArray extends AbstractList<Object> implements DeXIterable<
 	}
 	
 	public DeXTable toDeXTable() {
-		return new DeXTable(this);
+		return table;
 	}
 }

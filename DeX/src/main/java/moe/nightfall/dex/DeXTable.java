@@ -75,7 +75,7 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	@Override
 	public DeXArray values() {
 		if (array == null)
-			array = new DeXArray(this);
+			array = new DeXArray(this, super.values());
 		return array;
 	}
 	

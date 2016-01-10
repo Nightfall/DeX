@@ -198,4 +198,8 @@ public final class DeX {
 		}
 		return Collections.unmodifiableCollection(ret);
 	}
+	
+	public static String prettyPrint(DeXTable table) {
+		
+	}
 }
