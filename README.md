@@ -37,8 +37,8 @@ Flags are boolean properties with a shorthand syntax.
 ```
 
 #### Strings
-Strings are encapsulated in quotation marks. Quotation marks, colons and curly brackets have to be escaped with backslash (As well as backslash).
-You can also write strings without quotation marks if they don't contain curly brackets or other (unescaped) illegal characters, keep numbers and booleans in mind to avoid ambiguity. Strings that aren't encapsulated will ignore any preceding and trailing whitespaces.
+Strings are encapsulated in quotation marks. Quotation marks and backslash have to be escaped with backslash.
+You can also write strings without quotation marks if they don't contain curly brackets or other illegal characters, keep numbers and booleans in mind to avoid ambiguity. Strings that aren't encapsulated will ignore any preceding and trailing whitespaces.
 
 Strings can span over multiple lines (if encapsulated), any preceding whitespace and line breaks will be included, so keep that in mind.
 
