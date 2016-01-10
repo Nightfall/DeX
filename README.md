@@ -23,6 +23,19 @@ Booleans of yes/no, true/false, on/off are supported.
 
 Numbers and booleans can be treated like strings by the API, unless specifically excluded.
 
+#### Flags
+Flags are boolean properties with a shorthand syntax.
+
+```
++flag
+#Is equivalent to
+"flag" = true
+
+-flag
+#Is equivalent to
+"flag" = false
+```
+
 #### Strings
 Strings are encapsulated in quotation marks. Quotation marks, colons and curly brackets have to be escaped with backslash (As well as backslash).
 You can also write strings without quotation marks if they don't contain curly brackets or other (unescaped) illegal characters, keep numbers and booleans in mind to avoid ambiguity. Strings that aren't encapsulated will ignore any preceding and trailing whitespaces.
