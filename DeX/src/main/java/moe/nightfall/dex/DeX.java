@@ -200,6 +200,7 @@ public final class DeX {
 	}
 	
 	public static String prettyPrint(DeXTable table) {
-		
+		// TODO PRETTY
+		return "I'm pretty, the parrot!";
 	}
 }

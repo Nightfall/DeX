@@ -73,7 +73,7 @@ public class DeXParser {
 			if (!array && !DeXParser.this.skipKeyValidation) {
 				for (RawTable raw : tagged) {
 					for (Entry entry : values) {
-						if (entry.key.equals(raw.tag)) throw new KeyDuplicationError(raw.index, raw.line, raw.source);
+						if (entry.key.equals(raw.tag)) throw new KeyDuplicationException(raw.index, raw.line, raw.source);
 					}
 				}
 			}
@@ -115,7 +115,7 @@ public class DeXParser {
 			
 			if (!skipCheck && key != null && !DeXParser.this.skipKeyValidation ) {
 				for (Entry entry : values) {
-					if (entry.key.equals(key)) throw new KeyDuplicationError(index, line, source);
+					if (entry.key.equals(key)) throw new KeyDuplicationException(index, line, source);
 				}
 			}
 			
@@ -267,32 +267,72 @@ public class DeXParser {
 	}
 	
 	public DeXTable parse(String text) {
-		
 		ParserData d = new ParserData(text);
-		for (d.index = 0; d.index < text.length(); d.index++) {
-			char c = text.charAt(d.index);
-			
-			if (c == ' ' || c  == '\t') {
-				// Don't parse whitespace, unless in string context
-				if (d.stringContext) {
-					d.append(c);
-				}
-			} else if (c == '\\') {
-				if (d.escape) {
+		try {
+			for (d.index = 0; d.index < text.length(); d.index++) {
+				char c = text.charAt(d.index);
+				
+				if (c == ' ' || c  == '\t') {
+					// Don't parse whitespace, unless in string context
+					if (d.stringContext) {
+						d.push(c);
+					}
+				} else if (c == '\\') {
+					if (d.escape) {
+						d.escape = false;
+					} else {
+						d.escape = true;
+					}
+				} else if (c == '\n') {
+					if (!d.escape) {
+						d.lineNumber++;
+						d.popValue();
+					} else {
+						d.escape = false;
+					}
+				} else if (d.escape) {
+					if (d.stringContext) {
+						// Escape sequences
+						switch (c) {
+						case '\\' : d.push(c); break;
+						case 'b' : d.push('\b'); break;
+						case 't' : d.push('\t'); break;
+						case 'n' : d.push('\n'); break;
+						case 'f' : d.push('\f'); break;
+						case 'r' : d.push('\r'); break;
+						case '"' : d.push('\"'); break;
+						case 'u' :
+							String sequence = d.source.substring(d.index, d.index + 4);
+							try {
+								d.push((char) Integer.parseInt(sequence, 16));
+							} catch (NumberFormatException e) {
+								throw new InvalidEscapeSequenceException(d.index, d.lineNumber, d.source);
+							}
+							d.index += 4;
+							break;
+						}
+					} else {
+						throw new UnexpectedTokenException(d.index, d.lineNumber, d.source, "Found escape sequence outside of string context");
+					}
 					d.escape = false;
-				} else {
-					d.escape = true;
-					continue;
-				}
-			} else if (c == '\n') {
-				if (!d.escape) {
-					d.lineNumber++;
+				} else if (c == '"') {
+					d.stringContext = !d.stringContext;
+				} else if (c == ',') {
 					d.popValue();
+				} else if (c == ':') {
+					d.popKey();
+				} else if (c == '{') {
+					d.pushTable();
+				} else if (c == '}') {
+					d.popTable();
+				} else {
+					d.push(c);
 				}
-			} else {
-				d.append(c);
 			}
+		} catch (IndexOutOfBoundsException e) {
+			throw new ParseException(d.index, d.lineNumber, d.source, "Unexpected end of file");
 		}
+		return d.baseTable.compile();
 	}
 	
 	public DeXTable parse(CharSequence cs) {
@@ -307,7 +347,7 @@ public class DeXParser {
 		}
 	}
 	
-	public class ParseException extends RuntimeException {
+	public static class ParseException extends RuntimeException {
 		private static final long serialVersionUID = 2169899005064859506L;
 		
 		ParseException(int index, int line, String source, String message) {
@@ -315,9 +355,30 @@ public class DeXParser {
 		}
 	}
 	
-	public class KeyDuplicationError extends ParseException {
-		KeyDuplicationError(int index, int line, String source) {
+	public static class KeyDuplicationException extends ParseException {
+		private static final long serialVersionUID = -9210668030112796649L;
+
+		KeyDuplicationException(int index, int line, String source) {
 			super(index, line, source, "Duplicate key found");
+		}
+	}
+	
+	public static class UnexpectedTokenException extends ParseException {
+		private static final long serialVersionUID = -1101771027977345797L;
+		
+		UnexpectedTokenException(int index, int line, String source) {
+			super(index, line, source, "Unexpected token found");
+		}
+		UnexpectedTokenException(int index, int line, String source, String detail) {
+			super(index, line, source, detail);
+		}
+	}
+	
+	public static class InvalidEscapeSequenceException extends ParseException {
+		private static final long serialVersionUID = -2566118826766886695L;
+
+		InvalidEscapeSequenceException(int index, int line, String source) {
+			super(index, line, source, "Invalid escape sequence found");
 		}
 	}
 	
