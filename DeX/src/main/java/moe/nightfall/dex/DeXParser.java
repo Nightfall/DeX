@@ -4,11 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.EmptyStackException;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Stack;
 
 import moe.nightfall.dex.DeXSerializable.SerializationMap;
 
@@ -50,7 +52,7 @@ public class DeXParser {
 	/** Mutable table for parsing */
 	private final class RawTable {
 
-		String tag = "";
+		final String tag;
 		boolean array = true;
 		Set<Entry> values = new HashSet<>();
 		
@@ -60,6 +62,10 @@ public class DeXParser {
 		String source;
 		int index, line;
 		
+		RawTable(String tag) {
+			this.tag = tag;
+		}
+
 		DeXTable compile() {
 			DeXTable table = new DeXTable(values.size(), tag);
 			
@@ -107,7 +113,7 @@ public class DeXParser {
 				}
 			}
 			
-			if (!skipCheck && !DeXParser.this.skipKeyValidation && key != null) {
+			if (!skipCheck && key != null && !DeXParser.this.skipKeyValidation ) {
 				for (Entry entry : values) {
 					if (entry.key.equals(key)) throw new KeyDuplicationError(index, line, source);
 				}
@@ -157,9 +163,136 @@ public class DeXParser {
 		}
 	}
 	
+	private final Object EMPTY = new Object();
+	
+	private final class ParserData {
+		
+		final String source;
+
+		RawTable baseTable = new RawTable("");
+		Stack<Entry> stack = new Stack<>();
+		boolean stringContext = false;
+		
+		// This is where we are at now;
+		int lineNumber = 0;
+		int index = 0;
+		
+		boolean escape = false;
+		
+		public ParserData(String source) {
+			this.source = source;
+			this.stack.add(new Entry(null, baseTable));
+		}
+		
+		void push(char c) {
+			Entry current = stack.peek();
+			if (current.value == EMPTY) {
+				current.value = new StringBuilder().append(c);
+			} else if (current.value instanceof StringBuilder) {
+				((StringBuilder) current.value).append(c);
+			} else if (current.key != EMPTY) {
+				// Can't insert, need a new entry
+				stack.push(new Entry(EMPTY, new StringBuilder().append(c)));
+			} else {
+				// TODO Error Out
+				throw new RuntimeException();
+			}
+		}
+		
+		void popKey() {
+			Entry entry = stack.peek();
+			if (entry.value == EMPTY) {
+				// TODO Error Out
+				throw new RuntimeException();
+			} else {
+				entry.key = entry.value;
+				if (entry.key instanceof StringBuilder)
+					entry.key = coerce((StringBuilder) entry.key);
+				entry.value = EMPTY;
+			}
+		}
+		
+		void pushTable() {
+			Entry entry = stack.peek();
+			if (entry.value instanceof StringBuilder) {
+				entry.value = new RawTable(entry.key.toString());
+			} else if (entry.value == EMPTY) {
+				entry.value = new RawTable("");
+			} else if (entry.key != EMPTY){
+				// Can't insert, need a new entry
+				stack.push(new Entry(EMPTY, new RawTable("")));
+			} else { 
+				// TODO Error Out
+				throw new RuntimeException();
+			}
+		}
+		
+		void popTable() {
+			try {
+				Entry entry = stack.pop();
+				Entry parent = stack.peek();
+				if (parent.value instanceof RawTable && entry.value instanceof RawTable) {
+					RawTable table = (RawTable) parent.value;
+					table.add(entry.key, entry.value, index, lineNumber, source);
+				} else {
+					// TODO Error out
+					throw new RuntimeException();
+				}
+			} catch (EmptyStackException e) {
+				throw e;
+			}
+		}
+		
+		void popValue() {
+			try {
+				Entry entry = stack.pop();
+				Entry parent = stack.peek();
+				if (parent.value instanceof RawTable && !(entry.value instanceof RawTable)) {
+					RawTable table = (RawTable) parent.value;
+					if (entry.value instanceof StringBuilder)
+						entry.value = coerce((StringBuilder) entry.value);
+					table.add(entry.key, entry.value, index, lineNumber, source);
+				} else {
+					// TODO Error out
+					throw new RuntimeException();
+				}
+			} catch (EmptyStackException e) {
+				throw e;
+			}
+		}
+		
+		Object coerce(StringBuilder value) {
+			return value;
+		}
+	}
 	
 	public DeXTable parse(String text) {
-		return null;
+		
+		ParserData d = new ParserData(text);
+		for (d.index = 0; d.index < text.length(); d.index++) {
+			char c = text.charAt(d.index);
+			
+			if (c == ' ' || c  == '\t') {
+				// Don't parse whitespace, unless in string context
+				if (d.stringContext) {
+					d.append(c);
+				}
+			} else if (c == '\\') {
+				if (d.escape) {
+					d.escape = false;
+				} else {
+					d.escape = true;
+					continue;
+				}
+			} else if (c == '\n') {
+				if (!d.escape) {
+					d.lineNumber++;
+					d.popValue();
+				}
+			} else {
+				d.append(c);
+			}
+		}
 	}
 	
 	public DeXTable parse(CharSequence cs) {
