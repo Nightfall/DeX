@@ -70,9 +70,7 @@ public final class DeX {
 	public static DeXTable ensure(Object in) {
 		if (in instanceof DeXTable) return (DeXTable) in;
 		else {
-			DeXTable table = new DeXTable(1, "");
-			table.append(0, in);
-			return table;
+			return DeXTable.builder("", 1).add(in).create();
 		}
 	}
 	
@@ -147,33 +145,31 @@ public final class DeX {
 	}
 	
 	public static DeXTable arrayToTable(Object[] array, SerializationMap sel) {
-		DeXTable table = new DeXTable(array.length, "");
+		DeXTable.Builder builder = DeXTable.builder("", array.length);
 		for(int i = 0; i < array.length; i++) {
-			table.append(i, toDeX(array[i], sel));
+			builder.add(toDeX(array[i], sel));
 		}
-		return table;
+		return builder.create();
 	}
 	
 	public static DeXTable iterableToTable(Iterable<?> iterable, SerializationMap sel) {
 		// We can't predict how long this thing is going to be
-		DeXTable table = new DeXTable(0, "");
+		DeXTable.Builder builder = DeXTable.builder("", 16);
 		Iterator<?> iterator = iterable.iterator();
 		
-		int i = 0;
 		while (iterator.hasNext()) {
-			i++;
-			table.append(i, toDeX(iterator.next(), sel));
+			builder.add(toDeX(iterator.next(), sel));
 		}
 		
-		return table;
+		return builder.create();
 	}
 	
 	public static DeXTable mapToTable(Map<?, ?> map, SerializationMap sel) {
-		DeXTable table = new DeXTable(map.size(), "");
-		for (Entry<Object, Object> entry : table.entrySet()) {
-			table.append(toDeX(entry.getKey(), sel), toDeX(entry.getValue(), sel));
+		DeXTable.Builder builder = DeXTable.builder("", map.size());
+		for (Entry<?, ?> entry : map.entrySet()) {
+			builder.put(toDeX(entry.getKey(), sel), toDeX(entry.getValue(), sel));
 		}
-		return table;
+		return builder.create();
 	}
 	
 	public static DeXTable getByTag(DeXIterable<?> iterable, String tag) {

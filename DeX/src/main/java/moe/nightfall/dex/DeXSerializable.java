@@ -145,16 +145,16 @@ public interface DeXSerializable {
 
 		@Override
 		public DeXTable serialize(T obj, SerializationMap map) {
-			DeXTable table = new DeXTable(fields.length, map.tagFor(clazz));
+			DeXTable.Builder builder = DeXTable.builder(map.tagFor(clazz), fields.length);
 			for (Field f : fields) {
 				try {
 					if (!f.isAccessible()) f.setAccessible(true);
-					table.append(f.getName(), DeX.toDeX(f.get(obj), map));
+					builder.put(f.getName(), DeX.toDeX(f.get(obj), map));
 				} catch (Exception e) {
 					throw new RuntimeException("Error while trying to serialize Object: ", e);
 				}
 			}
-			return table;
+			return builder.create();
 		}
 
 		@Override

@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.EmptyStackException;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -54,7 +54,7 @@ public class DeXParser {
 
 		final String tag;
 		boolean array = true;
-		Set<Entry> values = new HashSet<>();
+		Set<Entry> values = new LinkedHashSet<>();
 		
 		// Contains all tagged tables with automatic conversion
 		List<RawTable> tagged = new LinkedList<>();
@@ -67,7 +67,7 @@ public class DeXParser {
 		}
 
 		DeXTable compile() {
-			DeXTable table = new DeXTable(values.size(), tag);
+			DeXTable.Builder builder = DeXTable.builder(tag, values.size());
 			
 			// Sanity check, tell if any autokeyed tagged tables have duplicate keys 
 			if (!array && !DeXParser.this.skipKeyValidation) {
@@ -91,10 +91,10 @@ public class DeXParser {
 					if (key instanceof RawTable) value = ((RawTable) key).compile();
 				}
 				
-				table.append(key, value);
+				builder.put(key, value);
 			}
 			
-			return table;
+			return builder.create();
 		}
 		
 		void add(Object key, Object value, int index, int line, String source) {
@@ -277,7 +277,7 @@ public class DeXParser {
 		}
 		
 		Object coerce(StringBuilder value) {
-			return value;
+			return value.toString();
 		}
 	}
 	
@@ -289,6 +289,7 @@ public class DeXParser {
 				
 				if (c == '"' && !d.escape) {
 					d.stringContext = !d.stringContext;
+					d.push(c);
 				} else if (c == ' ' || c  == '\t') {
 					// Don't parse whitespace, unless in string context
 					if (d.stringContext) {
