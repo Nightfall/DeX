@@ -87,7 +87,7 @@ public class DeXParser {
 				
 				Object key = i++;
 				if (!array) {
-					key = entry.key;
+					if (entry.key != null) key = entry.key;
 					if (key instanceof RawTable) value = ((RawTable) key).compile();
 				}
 				
@@ -99,6 +99,8 @@ public class DeXParser {
 		
 		void add(Object key, Object value, int index, int line, String source) {
 			
+			// Filter out empty
+			if (value == null) return;
 			// This is not an array.
 			if (key != null) array = false;
 			
@@ -124,7 +126,7 @@ public class DeXParser {
 			
 			if (!skipCheck && key != null && !DeXParser.this.skipKeyValidation ) {
 				for (Entry entry : values) {
-					if (entry.key.equals(key)) throw new KeyDuplicationException(index, line, source);
+					if (key.equals(entry.key)) throw new KeyDuplicationException(index, line, source);
 				}
 			}
 			values.add(new Entry(key, value));
@@ -179,6 +181,8 @@ public class DeXParser {
 
 		RawTable baseTable = new RawTable("");
 		Stack<Entry> stack = new Stack<>();
+		
+		// True if we are currently in string context, means " was opened
 		boolean stringContext = false;
 		
 		// This is where we are at now;
@@ -195,11 +199,16 @@ public class DeXParser {
 		void push(char c) {
 			Entry current = stack.peek();
 			if (current.value == null) {
+				// A whitespace can't start a new token
+				if (c == ' ') return;
 				current.value = new StringBuilder().append(c);
 			} else if (current.value instanceof StringBuilder) {
-				((StringBuilder) current.value).append(c);
-			} else if (current.key != null || current.value instanceof RawTable) {
+				StringBuilder sb = ((StringBuilder) current.value);
+				sb.append(c);
+			} else if (current.value instanceof RawTable) {
 				// Can't insert, need a new entry
+				// A whitespace can't start a new token
+				if (c == ' ') return;
 				stack.push(new Entry(null, new StringBuilder().append(c)));
 			} else {
 				throw new UnexpectedTokenException(index, lineNumber, source);
@@ -219,12 +228,13 @@ public class DeXParser {
 		}
 		
 		void pushTable() {
+//			System.out.println("Pushed table");
 			Entry entry = stack.peek();
 			if (entry.value instanceof StringBuilder) {
-				entry.value = new RawTable(entry.value.toString());
+				entry.value = new RawTable(stripTrailingWhitespace(entry.value.toString()));
 			} else if (entry.value == null) {
 				entry.value = new RawTable("");
-			} else if (entry.key != null){
+			} else if (entry.value instanceof RawTable) {
 				// Can't insert, need a new entry
 				stack.push(new Entry(null, new RawTable("")));
 			} else { 
@@ -236,8 +246,17 @@ public class DeXParser {
 		void popTable() {
 			try {
 				Entry entry = stack.peek();
-				if (!(entry.value instanceof RawTable)) popValue(false);
+				if (entry.value == null) stack.pop();
+				else if (!(entry.value instanceof RawTable)) {
+					// Remove last index on the list S
+					popValue();
+					// Pop empty entry
+					stack.pop();
+				}
+				
 				entry = stack.pop();
+//				System.out.println("Pop table: s:" + stack.size() + " " + entry.key + " " + entry.value);
+				
 				Entry parent = stack.peek();
 				if (parent.value instanceof RawTable && entry.value instanceof RawTable) {
 					RawTable table = (RawTable) parent.value;
@@ -251,23 +270,25 @@ public class DeXParser {
 			}
 		}
 		
-		void popValue(boolean eol) {
+		void popValue() {
+			if (stringContext) throw new UnexpectedTokenException(index, lineNumber, source, "\" expected");
 			try {
 				Entry entry = stack.peek();
-				if (eol) {
-					// Don't be as strict if this is a line end, check if you'd
-					// pop a table and return if so.
-					if (entry.value instanceof RawTable) return;
-				}
-				
+				if (entry.value instanceof RawTable) return;
 				stack.pop();
+				
+//				System.out.println("Pop: s:" + stack.size() + " " + entry.key + " " + entry.value);
 				Entry parent = stack.peek();
 				if (parent.value instanceof RawTable && !(entry.value instanceof RawTable)) {
+					if (entry.value == null) throw new UnexpectedTokenException(index, lineNumber, source);
+					
 					RawTable table = (RawTable) parent.value;
 					if (entry.value instanceof StringBuilder)
 						entry.value = coerce((StringBuilder) entry.value);
 					table.add(entry.key, entry.value, index, lineNumber, source);
-				} else if (!eol) {
+					// Insert new empty node
+					stack.push(new Entry(null, null));
+				} else {
 					// TODO Error out
 					throw new UnexpectedTokenException(index, lineNumber, source);
 				}
@@ -277,7 +298,25 @@ public class DeXParser {
 		}
 		
 		Object coerce(StringBuilder value) {
-			return value.toString();
+			String s = value.toString();
+			s = stripTrailingWhitespace(s);
+			return s;
+		}
+		
+		private String stripTrailingWhitespace(String s) {
+			// Get rid of all trailing whitespace
+			char c = s.charAt(s.length() - 1);
+			if (c == ' ') {
+				int index = s.length() - 1;
+				while (true) {
+					index--;
+					if (s.charAt(index) != ' ') {
+						s = s.substring(0, index + 1);
+						break;
+					}
+				}
+			}
+			return s;
 		}
 	}
 	
@@ -288,13 +327,15 @@ public class DeXParser {
 				char c = text.charAt(d.index);
 				
 				if (c == '"' && !d.escape) {
-					d.stringContext = !d.stringContext;
-					d.push(c);
-				} else if (c == ' ' || c  == '\t') {
-					// Don't parse whitespace, unless in string context
-					if (d.stringContext) {
-						d.push(c);
+					if (!d.stringContext) {
+						// Check if this is the first token, otherwise fail
+						Entry current = d.stack.peek();
+						if (current.value != null) throw new UnexpectedTokenException(d.index, d.lineNumber, d.source);
 					}
+					d.stringContext = !d.stringContext;
+				} else if (c  == '\t' && d.stringContext) {
+					// Don't parse tab, unless in string context
+					d.push(c);
 				} else if (c == '\\') {
 					if (d.escape && d.stringContext) {
 						d.push(c);
@@ -303,11 +344,11 @@ public class DeXParser {
 						d.escape = true;
 					}
 				} else if (c == '\n') {
+					d.lineNumber++;
 					if (d.stringContext) d.push(c);
 					else {
 						if (!d.escape) {
-							d.lineNumber++;
-							d.popValue(true);
+							d.popValue();
 						} else {
 							d.escape = false;
 						}
@@ -339,7 +380,7 @@ public class DeXParser {
 					d.escape = false;
 				} else if (!d.stringContext) {
 					if (c == ',') {
-						d.popValue(false);
+						d.popValue();
 					} else if (c == ':') {
 						d.popKey();
 					} else if (c == '{') {
@@ -352,10 +393,15 @@ public class DeXParser {
 				}
 			}
 		} catch (IndexOutOfBoundsException e) {
-			throw new ParseException(d.index, d.lineNumber, d.source, "Unexpected end of file");
+			throw new ParseException(d.index, d.lineNumber, d.source, "Unexpected end of file", e);
+		} catch (ParseException e) {
+			throw e;
 		} catch (Exception e) {
 			throw new ParseException(d.index, d.lineNumber, d.source, "Unexpected error uccorded!", e);
 		}
+		
+		// Check if anything is left on the stack
+		if (d.stack.size() != 1) throw new ParseException(d.index, d.lineNumber, d.source, "Unexpected end of file");
 		return d.baseTable.compile();
 	}
 	
@@ -413,6 +459,7 @@ public class DeXParser {
 	 * Generates a string with the two lines before and two lines after an error,
 	 * pointing at the error
 	 */
+	//TODO This fails once in a while so check what's up with this...
 	private static String generateDetailMessage(int index, int line, String source) {
 		
 		StringBuilder ret = new StringBuilder();
@@ -443,7 +490,7 @@ public class DeXParser {
 			for (int i = 0; i < range; i++) {
 				int ls3 = source.indexOf('\n', ls2 + 1);
 				if (ls3 == -1) {
-					if (ls2 < source.length()) ls3 = source.length() - 2;
+					if (ls2 < source.length() - 1) ls3 = source.length() - 1;
 					else break;
 				}
 				

@@ -67,7 +67,7 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 			if (key == null || value == null)
 				throw new IllegalArgumentException("DeXTable doesn't allow null keys or values!");
 			if ((value instanceof DeXTable || DeX.isPrimitive(value)) && (key instanceof DeXTable || DeX.isPrimitive(key))) {
-				if (!table.isArray && !key.equals(i)) table.isArray = false;
+				if (table.isArray && !key.equals(i)) table.isArray = false;
 				table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(key, value));
 				return this;
 			}

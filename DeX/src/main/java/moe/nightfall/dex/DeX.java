@@ -202,22 +202,85 @@ public final class DeX {
 	}
 	
 	private static void prettyPrint(DeXTable table, StringBuilder sb, int level) {
-		if (table.hasTag()) sb.append(table.tag).append(" {\n");
-		else sb.append("{\n");
+		boolean array = table.isArray();
+		if (table.hasTag()) sb.append(table.tag).append(" { ");
+		else sb.append("{ ");
+		if (!array) sb.append('\n');
+		
+		boolean first = true;
 		for (Entry<Object, Object> entry : table.entrySet()) {
-			if (level > 0) for (int j = 0; j < level; j++) sb.append(" ");
-				
-			if (entry.getKey() instanceof DeXTable) {
-				prettyPrint((DeXTable) entry.getKey(), sb, level + 2);
-			} else sb.append(entry.getKey());
-			sb.append(" : ");
+			if (!array && level > 0) for (int j = 0; j < level; j++) sb.append(" ");
+			if (!first && array) {
+				sb.append(", ");
+			} else first = false;
+			
+			if (!array) {
+				if (entry.getKey() instanceof DeXTable) {
+					prettyPrint((DeXTable) entry.getKey(), sb, level + 2);
+				} else print(entry.getKey(), sb, true);
+				sb.append(" : ");
+			}
 			if (entry.getValue() instanceof DeXTable) {
 				prettyPrint((DeXTable) entry.getValue(), sb, level + 2);
-			} else sb.append(entry.getValue());
+			} else print(entry.getValue(), sb, true);
 			
-			sb.append("\n");
+			if (!array) sb.append('\n');
 		}
-		if (level > 0) for (int j = 0; j < level - 2; j++) sb.append(" "); 
-		sb.append("}\n");
+		if (!array) {
+			if (level > 0) for (int j = 0; j < level - 2; j++) sb.append(" "); 
+		} else sb.append(' ');
+		
+		sb.append('}');
+	}
+	
+	private static void print(Object o, StringBuilder sb, boolean pretty) {
+		if (o instanceof String) {
+			String s = (String) o;
+			sb.ensureCapacity(sb.length() + s.length());
+			int start = sb.length();
+			
+			if (!pretty) sb.append('"');
+			
+			boolean isValid = pretty;
+			for (int i = 0; i < s.length(); i++) {
+				char c = s.charAt(i);
+				String s2 = escape(c);
+				if (s2 != null) {
+					sb.append(s2);
+					isValid = false;
+					continue;
+				} else if (isValid) {
+					switch (c) {
+					case '{': isValid = false; break;
+					case '}': isValid = false; break;
+					case ':': isValid = false; break;
+					case ',': isValid = false; break;
+					}
+				}
+				sb.append(c);
+			}
+			
+			if (!pretty) sb.append('"');
+			else if (!isValid) {
+				// Since we haven't inserted that one before we have to do this
+				sb.insert(start, '"');
+				sb.append('"');
+			}
+		} else {
+			sb.append(o.toString());
+		}
+	}
+	
+	private static String escape(char c) {
+		switch (c) {
+	      case '\"': return "\\\"";
+	      case '\t': return "\\t";
+	      case '\n': return "\\n";
+	      case '\r': return "\\r";
+	      case '\f': return "\\f";
+	      case '\b': return "\\b";
+	      case '\\': return "\\\\";
+		}
+		return null;
 	}
 }
