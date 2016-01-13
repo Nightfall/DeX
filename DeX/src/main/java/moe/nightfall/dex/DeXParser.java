@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.EmptyStackException;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 
@@ -54,29 +52,13 @@ public class DeXParser {
 		final String tag;
 		boolean array = true;
 		Set<Entry> values = new LinkedHashSet<>();
-		
-		// Contains all tagged tables with automatic conversion
-		List<DeXTable> tagged = new LinkedList<>();
-		
+
 		RawTable(String tag) {
 			this.tag = tag;
 		}
 
 		DeXTable compile() {
 			DeXTable.Builder builder = DeXTable.builder(tag, values.size());
-			
-			// Sanity check, tell if any autokeyed tagged tables have duplicate keys 
-			if (!array && !DeXParser.this.skipKeyValidation) {
-				int count = 0;
-				for (DeXTable raw : tagged) {
-					for (Entry entry : values) {
-						if (entry.key.equals(raw.tag())) count++;
-						// FIXME Need a proper error message
-						if (count > 1) throw new KeyDuplicationException(0, 0, null);
-					}
-				}
-			}
-			
 			int i = 0;
 			for (Entry entry : values) {
 				Object value = entry.value;
@@ -84,7 +66,6 @@ public class DeXParser {
 				if (!array) {
 					if (entry.key != null) key = entry.key;
 				}
-				
 				builder.put(key, value);
 			}
 			
@@ -98,32 +79,12 @@ public class DeXParser {
 			// This is not an array.
 			if (key != null) array = false;
 			
-			boolean skipCheck = false;
 			if (key == null) {
 				if (value instanceof DeXTable) {
 					DeXTable table = (DeXTable) value;
 					if (table.hasTag()) {
-						String tag = table.tag();
-						if (!DeXParser.this.skipKeyValidation) {
-							// Cache this for later, we can't do the check for them just now since
-							// We don't know if this is an array or not yet
-							tagged.add(table);
-							
-							/* This is a corner case but we should still add proper error handling
-							table.index = index;
-							table.line = line;
-							table.source = source;
-							*/
-						}
-						key = tag;
-						skipCheck = true;
+						key = table.tag();
 					}
-				}
-			}
-			
-			if (!skipCheck && key != null && !DeXParser.this.skipKeyValidation ) {
-				for (Entry entry : values) {
-					if (key.equals(entry.key)) throw new KeyDuplicationException(index, line, source);
 				}
 			}
 			values.add(new Entry(key, value));

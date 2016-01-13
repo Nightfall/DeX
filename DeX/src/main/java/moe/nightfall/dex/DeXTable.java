@@ -71,24 +71,18 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 			int i = table.size();
 			if (key == null || value == null)
 				throw new IllegalArgumentException("DeXTable doesn't allow null keys or values!");
-			if ((value instanceof DeXTable || DeX.isPrimitive(value)) && (key instanceof DeXTable || DeX.isPrimitive(key))) {
-				if (table.isArray && !key.equals(i)) table.isArray = false;
-				table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(key, value));
-				return this;
-			}
-			throw new IllegalArgumentException("DeXTable only allows String, DeXTable and numbers!");
+			if (table.isArray && !key.equals(i)) table.isArray = false;
+			table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(key, value));
+			return this;
 			
 		}
 		
 		public Builder add(Object value) {
 			if (table == null) throw new IllegalStateException("Builder finished!");
 			if (value == null) 
-				throw new IllegalArgumentException("DeXTable doesn't values!");
-			if ((value instanceof DeXTable || DeX.isPrimitive(value))) {
-				table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(table.size(), value));
-				return this;
-			}
-			throw new IllegalArgumentException("DeXTable only allows String, DeXTable and numbers!");
+				throw new IllegalArgumentException("DeXTable doesn't allow null values!");
+			table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(table.size(), value));
+			return this;
 		}
 		
 		public Builder addAll(Iterable<?> iterable) {

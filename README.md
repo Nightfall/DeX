@@ -59,7 +59,6 @@ The key MUST be followed by the start of a value on the same line. If you want t
 you can use `\`
 
 A table contains key value pairs, separated by commas. Keys can be of any type, as well as the values.
-All table keys have to be unique.
 A line break is equivalent to a comma, empty lines get ignored.
 If no key is provided, the index will be treated as numeric key (starting from 0).
 Tagged tables will have their tag type treated as key, *but only if not in array context!*
