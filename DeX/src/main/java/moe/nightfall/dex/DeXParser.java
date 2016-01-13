@@ -8,7 +8,6 @@ import java.util.EmptyStackException;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.Stack;
 
@@ -57,10 +56,7 @@ public class DeXParser {
 		Set<Entry> values = new LinkedHashSet<>();
 		
 		// Contains all tagged tables with automatic conversion
-		List<RawTable> tagged = new LinkedList<>();
-		
-		String source;
-		int index, line;
+		List<DeXTable> tagged = new LinkedList<>();
 		
 		RawTable(String tag) {
 			this.tag = tag;
@@ -72,10 +68,11 @@ public class DeXParser {
 			// Sanity check, tell if any autokeyed tagged tables have duplicate keys 
 			if (!array && !DeXParser.this.skipKeyValidation) {
 				int count = 0;
-				for (RawTable raw : tagged) {
+				for (DeXTable raw : tagged) {
 					for (Entry entry : values) {
-						if (entry.key.equals(raw.tag)) count++;
-						if (count > 1) throw new KeyDuplicationException(raw.index, raw.line, raw.source);
+						if (entry.key.equals(raw.tag())) count++;
+						// FIXME Need a proper error message
+						if (count > 1) throw new KeyDuplicationException(0, 0, null);
 					}
 				}
 			}
@@ -83,12 +80,9 @@ public class DeXParser {
 			int i = 0;
 			for (Entry entry : values) {
 				Object value = entry.value;
-				if (value instanceof RawTable) value = ((RawTable) value).compile();
-				
 				Object key = i++;
 				if (!array) {
 					if (entry.key != null) key = entry.key;
-					if (key instanceof RawTable) value = ((RawTable) key).compile();
 				}
 				
 				builder.put(key, value);
@@ -106,17 +100,20 @@ public class DeXParser {
 			
 			boolean skipCheck = false;
 			if (key == null) {
-				if (value instanceof RawTable) {
-					RawTable table = (RawTable) value;
-					String tag = table.tag;
-					if (tag.length() > 0) {
+				if (value instanceof DeXTable) {
+					DeXTable table = (DeXTable) value;
+					if (table.hasTag()) {
+						String tag = table.tag();
 						if (!DeXParser.this.skipKeyValidation) {
 							// Cache this for later, we can't do the check for them just now since
 							// We don't know if this is an array or not yet
 							tagged.add(table);
+							
+							/* This is a corner case but we should still add proper error handling
 							table.index = index;
 							table.line = line;
 							table.source = source;
+							*/
 						}
 						key = tag;
 						skipCheck = true;
@@ -130,22 +127,6 @@ public class DeXParser {
 				}
 			}
 			values.add(new Entry(key, value));
-		}
-		
-		@Override
-		public int hashCode() {
-			return Objects.hash(tag, values);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) return true;
-			if (obj == null) return false;
-			if (obj instanceof RawTable) {
-				RawTable other = (RawTable) obj;
-				return other.tag.equals(tag) && other.values.equals(values);
-			}
-			return false;
 		}
 	}
 	
@@ -184,6 +165,8 @@ public class DeXParser {
 		
 		// True if we are currently in string context, means " was opened
 		boolean stringContext = false;
+		// True if we WERE in a string context this token
+		boolean wasStringContext = false;
 		
 		// This is where we are at now;
 		int lineNumber = 0;
@@ -197,25 +180,24 @@ public class DeXParser {
 		}
 		
 		void push(char c) {
-			Entry current = stack.peek();
-			if (current.value == null) {
+			Entry entry = stack.peek();
+			if (entry.value instanceof StringBuilder) {
+				StringBuilder sb = ((StringBuilder) entry.value);
+				sb.append(c);
+			} else if (entry.value == null) { 
 				// A whitespace can't start a new token
 				if (c == ' ') return;
-				current.value = new StringBuilder().append(c);
-			} else if (current.value instanceof StringBuilder) {
-				StringBuilder sb = ((StringBuilder) current.value);
-				sb.append(c);
-			} else if (current.value instanceof RawTable) {
+				entry.value = new StringBuilder().append(c);
+			} else {
 				// Can't insert, need a new entry
 				// A whitespace can't start a new token
 				if (c == ' ') return;
 				stack.push(new Entry(null, new StringBuilder().append(c)));
-			} else {
-				throw new UnexpectedTokenException(index, lineNumber, source);
 			}
 		}
 		
 		void popKey() {
+			wasStringContext = false;
 			Entry entry = stack.peek();
 			if (entry.value == null) {
 				throw new UnexpectedTokenException(index, lineNumber, source);
@@ -224,6 +206,7 @@ public class DeXParser {
 				if (entry.key instanceof StringBuilder)
 					entry.key = coerce((StringBuilder) entry.key);
 				entry.value = null;
+				//System.out.println("Popped key " + entry.key);
 			}
 		}
 		
@@ -231,63 +214,55 @@ public class DeXParser {
 //			System.out.println("Pushed table");
 			Entry entry = stack.peek();
 			if (entry.value instanceof StringBuilder) {
+				wasStringContext = false;
+				if (stringContext) throw new UnexpectedTokenException(index, lineNumber, source, "\" expected");
 				entry.value = new RawTable(stripTrailingWhitespace(entry.value.toString()));
 			} else if (entry.value == null) {
 				entry.value = new RawTable("");
-			} else if (entry.value instanceof RawTable) {
+			} else { 
 				// Can't insert, need a new entry
 				stack.push(new Entry(null, new RawTable("")));
-			} else { 
-				// TODO Error Out
-				throw new UnexpectedTokenException(index, lineNumber, source);
 			}
 		}
 		
 		void popTable() {
 			try {
 				Entry entry = stack.peek();
-				if (entry.value == null) stack.pop();
-				else if (!(entry.value instanceof RawTable)) {
+				if (!(entry.value instanceof RawTable)) {
 					// Remove last index on the list S
-					popValue();
-					// Pop empty entry
-					stack.pop();
+					popValue(false);
+					entry = stack.peek();
 				}
 				
-				entry = stack.pop();
-//				System.out.println("Pop table: s:" + stack.size() + " " + entry.key + " " + entry.value);
-				
-				Entry parent = stack.peek();
-				if (parent.value instanceof RawTable && entry.value instanceof RawTable) {
-					RawTable table = (RawTable) parent.value;
-					table.add(entry.key, entry.value, index, lineNumber, source);
-				} else {
-					// TODO Error out
+				if (!(entry.value instanceof RawTable)) 
 					throw new UnexpectedTokenException(index, lineNumber, source);
-				}
+				entry.value = ((RawTable)entry.value).compile();
 			} catch (EmptyStackException e) {
 				throw e;
 			}
 		}
 		
-		void popValue() {
+		void popValue(boolean eol) {
+			wasStringContext = false;
 			if (stringContext) throw new UnexpectedTokenException(index, lineNumber, source, "\" expected");
 			try {
 				Entry entry = stack.peek();
-				if (entry.value instanceof RawTable) return;
+				if (entry.value instanceof RawTable) {
+					if (eol) return;
+					else throw new UnexpectedTokenException(index, lineNumber, source);
+				}
+				
 				stack.pop();
 				
-//				System.out.println("Pop: s:" + stack.size() + " " + entry.key + " " + entry.value);
+				//System.out.println("Pop: s:" + stack.size() + " " + entry.key + " " + entry.value);
 				Entry parent = stack.peek();
-				if (parent.value instanceof RawTable && !(entry.value instanceof RawTable)) {
+				if (parent.value instanceof RawTable) {
 					if (entry.value == null) throw new UnexpectedTokenException(index, lineNumber, source);
 					
 					RawTable table = (RawTable) parent.value;
 					if (entry.value instanceof StringBuilder)
 						entry.value = coerce((StringBuilder) entry.value);
 					table.add(entry.key, entry.value, index, lineNumber, source);
-					// Insert new empty node
-					stack.push(new Entry(null, null));
 				} else {
 					// TODO Error out
 					throw new UnexpectedTokenException(index, lineNumber, source);
@@ -304,6 +279,7 @@ public class DeXParser {
 		}
 		
 		private String stripTrailingWhitespace(String s) {
+			if (wasStringContext) return s;
 			// Get rid of all trailing whitespace
 			char c = s.charAt(s.length() - 1);
 			if (c == ' ') {
@@ -327,12 +303,17 @@ public class DeXParser {
 				char c = text.charAt(d.index);
 				
 				if (c == '"' && !d.escape) {
-					if (!d.stringContext) {
+					if (d.stringContext) {
+						d.stringContext = false;
+					} else {
+						if (d.wasStringContext) throw new UnexpectedTokenException(d.index, d.lineNumber, d.source);
+						d.stringContext = true;
+						d.wasStringContext = true;
+						
 						// Check if this is the first token, otherwise fail
 						Entry current = d.stack.peek();
 						if (current.value != null) throw new UnexpectedTokenException(d.index, d.lineNumber, d.source);
 					}
-					d.stringContext = !d.stringContext;
 				} else if (c  == '\t' && d.stringContext) {
 					// Don't parse tab, unless in string context
 					d.push(c);
@@ -348,7 +329,7 @@ public class DeXParser {
 					if (d.stringContext) d.push(c);
 					else {
 						if (!d.escape) {
-							d.popValue();
+							d.popValue(true);
 						} else {
 							d.escape = false;
 						}
@@ -380,7 +361,7 @@ public class DeXParser {
 					d.escape = false;
 				} else if (!d.stringContext) {
 					if (c == ',') {
-						d.popValue();
+						d.popValue(false);
 					} else if (c == ':') {
 						d.popKey();
 					} else if (c == '{') {
@@ -401,6 +382,7 @@ public class DeXParser {
 		}
 		
 		// Check if anything is left on the stack
+		if (d.stack.size() > 1) d.popValue(true);
 		if (d.stack.size() != 1) throw new ParseException(d.index, d.lineNumber, d.source, "Unexpected end of file");
 		return d.baseTable.compile();
 	}
@@ -461,6 +443,7 @@ public class DeXParser {
 	 */
 	//TODO This fails once in a while so check what's up with this...
 	private static String generateDetailMessage(int index, int line, String source) {
+		if (source == null) return "?";
 		
 		StringBuilder ret = new StringBuilder();
 		

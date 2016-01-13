@@ -1,6 +1,7 @@
 package moe.nightfall.dex;
 
 import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -40,6 +41,10 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	
 	public static DeXTable create(Iterable<?> i, String tag) {
 		return builder(tag).addAll(i).create();
+	}
+	
+	public static DeXTable create(Object... array) {
+		return builder().addAll(Arrays.asList(array)).create();
 	}
 	
 	/** Internal constructor for TableBuilder */

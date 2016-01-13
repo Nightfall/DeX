@@ -11,6 +11,10 @@ interface DeXIterable<E> extends Iterable<Object> {
 	default boolean hasTag() {
 		return tag().length() > 0;
 	}
+	
+	default boolean hasKey(E key) {
+		return get(key) != null;
+	}
 
 	/**
 	 * Note that numbers will only be avaialable via {@link Double.class} and
@@ -30,6 +34,10 @@ interface DeXIterable<E> extends Iterable<Object> {
 			return def;
 		else
 			return DeX.coerce(type, obj);
+	}
+	
+	default DeXTable getTable(E key) {
+		return (DeXTable) get(key);
 	}
 
 	default String getString(E key, String def) {
