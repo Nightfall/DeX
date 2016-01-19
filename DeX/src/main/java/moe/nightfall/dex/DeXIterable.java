@@ -100,27 +100,21 @@ interface DeXIterable<E> extends Iterable<Object> {
 	default long getLong(E key, long def) {
 		Object o = get(key);
 		if (o == null) return def;
-		if (o instanceof Double || o instanceof Float) {
-			long value = ((Number) o).longValue();
-			// Don't round!
-			if (!o.equals(value))
-				throw new ArithmeticException(o + "can't be converted to integer!");;
-			return value;
-		} else if (o instanceof Number) return ((Number) o).longValue();
-		throw new ArithmeticException("Table can't be converted to number!");
+		if (o instanceof Number) {
+			double d = ((Number) o).doubleValue();
+			if (d % 1 == 0) return (long) d;
+			else throw new ArithmeticException("Double can't be converted to integer without loss!");
+		} else throw new ArithmeticException("Table can't be converted to number!");
 	}
 
 	default long getLong(E key) {
 		Object o = get(key);
 		if (o == null) throw new NullPointerException();
-		if (o instanceof Double || o instanceof Float) {
-			long value = ((Number) o).longValue();
-			// Don't round!
-			if (!o.equals(value))
-				throw new ArithmeticException(o + " can't be converted to integer!");;
-			return value;
-		} else if (o instanceof Number) return ((Number) o).longValue();
-		throw new ArithmeticException("Table can't be converted to number!");
+		if (o instanceof Number) {
+			double d = ((Number) o).doubleValue();
+			if (d % 1 == 0) return (long) d;
+			else throw new ArithmeticException("Double can't be converted to integer without loss!");
+		} else throw new ArithmeticException("Table can't be converted to number!");
 	}
 
 	default int getInt(E key, int def) {
