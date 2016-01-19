@@ -8,8 +8,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-import moe.nightfall.dex.DeXSerializable.SerializationMap;
-
 /**
  * Immutable table
  * 
@@ -20,9 +18,6 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	private Set<Entry<Object, Object>> underlying;
 	private DeXArray array;
 	private boolean isArray = true;
-	
-	/** Serialization reference, used for deserializaton of tags, might be null */
-	SerializationMap serialization;
 	
 	/** This should not be modified for immutability reasons. The only exception is when serializing */
 	String tag;
@@ -71,7 +66,13 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 			int i = table.size();
 			if (key == null || value == null)
 				throw new IllegalArgumentException("DeXTable doesn't allow null keys or values!");
-			if (table.isArray && !key.equals(i)) table.isArray = false;
+			
+			// Coerce numbers to double for comparision
+			if (key instanceof Number) key = ((Number)key).doubleValue();
+			if (value instanceof Number) value = ((Number)value).doubleValue();
+			
+			if (table.isArray) 
+				table.isArray = key instanceof Number && ((Number)key).doubleValue() == i;
 			table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(key, value));
 			return this;
 			
@@ -81,7 +82,10 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 			if (table == null) throw new IllegalStateException("Builder finished!");
 			if (value == null) 
 				throw new IllegalArgumentException("DeXTable doesn't allow null values!");
-			table.underlying.add(new AbstractMap.SimpleImmutableEntry<>(table.size(), value));
+			
+			if (value instanceof Number) value = ((Number)value).doubleValue();
+			// This has to use a double as key for comparision
+			table.underlying.add(new AbstractMap.SimpleImmutableEntry<>((double) table.size(), value));
 			return this;
 		}
 		
@@ -110,6 +114,13 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	}
 
 	@Override
+	public Object get(Object key) {
+		// If this is a number we have to convert it to double
+		if (key instanceof Number) key = ((Number)key).doubleValue();
+		return super.get(key);
+	}
+
+	@Override
 	public Iterator<Object> iterator() {
 		return values().iterator();
 	}
@@ -131,6 +142,7 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		return array;
 	}
 	
+
 	/**
 	 * Returns true if this is an array, means it complies with
 	 * starting with index {@code 0} and ending with index {@link #size()}{@code - 1}.
@@ -152,17 +164,18 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		return (T) DeX.toJava(target, this);
 	}
 	
-	public <T> T deserialize() {
-		return DeX.deserialize(this);
-	}
-	
 	/** This returns a copy of the table as Java HashMap */
-	public HashMap<Object, Object> copy() {
+	public HashMap<Object, Object> toHashMap() {
 		return new HashMap<>(this);
 	}
 	
 	@Override
 	public String toString() {
 		return DeX.prettyPrint(this);
+	}
+	
+	@Override
+	public String print() {
+		return DeX.print(this);
 	}
 }

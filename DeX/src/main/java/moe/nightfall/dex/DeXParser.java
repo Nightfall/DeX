@@ -195,7 +195,7 @@ public class DeXParser {
 					entry = stack.peek();
 				}
 				
-				if (!(entry.value instanceof RawTable)) 
+				if (!(entry.value instanceof RawTable) || stack.size() < 2) 
 					throw new UnexpectedTokenException(index, lineNumber, source);
 				entry.value = ((RawTable)entry.value).compile();
 			} catch (EmptyStackException e) {

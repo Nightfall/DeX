@@ -1,5 +1,7 @@
 package moe.nightfall.dex;
-import org.junit.Assert;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,8 +61,7 @@ public class DeXParserTest {
 				.create()
 			).create();
 		
-		// Not implemented yet, need to be able to compare numbers on equals
-		//Assert.assertTrue(table.equals(expected));
+		assertThat(table.equals(expected));
 	}
 	
 	@Test
@@ -69,43 +70,35 @@ public class DeXParserTest {
 		DeXTable table;
 		// Empty array
 		table = parser.parse("{}").getTable(0);
-		Assert.assertTrue(table.isArray());
-		Assert.assertTrue(table.size() == 0);
+
+		assertThat(table.isArray());
+		assertThat(table.size() == 0);
 		
 		// Simple array
 		table = parser.parse("{one, foo bar, three}").getTable(0);
-		Assert.assertTrue(table.isArray());
-		Assert.assertTrue(table.equals(DeXTable.create("one", "foo bar", "three")));
+		assertThat(table.isArray());
+		assertThat(table.equals(DeXTable.create("one", "foo bar", "three")));
 	}
 	
-	@Test(expected = UnexpectedTokenException.class)
-	public void testEmptyValue1() {
-		parser.parse("{val1, val2,,}");
+	@Test
+	public void testEmptyValue() {
+		assertThatThrownBy(() -> parser.parse("{val1, val2,,}")).isInstanceOf(UnexpectedTokenException.class);
+		assertThatThrownBy(() -> parser.parse("{,val1, val2} ")).isInstanceOf(UnexpectedTokenException.class);
+	}
+
+	@Test
+	public void testInvalidString() {
+		assertThatThrownBy(() -> parser.parse("{this is \" invalid!}")).isInstanceOf(UnexpectedTokenException.class);
+		assertThatThrownBy(() -> parser.parse("{\"this is invalid!} ")).isInstanceOf(UnexpectedTokenException.class);
 	}
 	
-	@Test(expected = UnexpectedTokenException.class)
-	public void testEmptyValue2() {
-		parser.parse("{,val1, val2}");
-	}
-	
-	@Test(expected = UnexpectedTokenException.class)
-	public void testInvalidString1() {
-		parser.parse("{this is \" invalid!}");
-	}
-	
-	@Test(expected = UnexpectedTokenException.class)
-	public void testInvalidString2() {
-		parser.parse("{\"this is invalid!}");
-	}
-	
-	@Test(expected = ParseException.class)
-	public void testInvalidTable1() {
-		parser.parse("{");
-	}
-	
-	@Test(expected = ParseException.class)
-	public void testInvalidTable2() {
-		parser.parse("{value}{value}");
+	@Test
+	public void testInvalidTable() {
+		assertThatThrownBy(() -> parser.parse("{")).isInstanceOf(ParseException.class);
+		assertThatThrownBy(() -> parser.parse("}")).isInstanceOf(ParseException.class);
+		assertThatThrownBy(() -> parser.parse("{a, b}, c}")).isInstanceOf(ParseException.class);
+		
+		assertThatThrownBy(() -> parser.parse("{value}{value}")).isInstanceOf(ParseException.class);
 	}
 	
 	private static class Timer {

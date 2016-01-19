@@ -5,6 +5,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * This is an immutable array view of a {@link DeXTable}.
+ * Most methods of {@link DeX} work with this, however, its recommended
+ * to only use this helper class to iterate on a {@link DeXTable} or access
+ * its values by index.
+ * 
+ * You can convert the array to a {@link DeXTable} by calling {@link #toDeXTable()},
+ * without overhead.
+ * 
+ * @author Vic
+ */
 public final class DeXArray extends AbstractList<Object> implements DeXIterable<Integer> {
 	
 	private List<Object> values;
@@ -47,5 +58,10 @@ public final class DeXArray extends AbstractList<Object> implements DeXIterable<
 	@Override
 	public String toString() {
 		return DeX.prettyPrint(table);
+	}
+	
+	@Override
+	public String print() {
+		return DeX.print(table);
 	}
 }

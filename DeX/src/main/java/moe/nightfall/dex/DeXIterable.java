@@ -4,9 +4,22 @@ import java.util.Collection;
 
 interface DeXIterable<E> extends Iterable<Object> {
 
+	/**
+	 * In order to comply with this interface, the implementation has to coerce
+	 * any {@link Number} to a {@link Double}
+	 * 
+	 * @param key
+	 * @return
+	 */
 	Object get(E key);
 
 	String tag();
+	
+	String print();
+	
+	default String prettyPrint() {
+		return toString();
+	}
 
 	default boolean hasTag() {
 		return tag().length() > 0;
@@ -17,8 +30,10 @@ interface DeXIterable<E> extends Iterable<Object> {
 	}
 
 	/**
-	 * Note that numbers will only be avaialable via {@link Double.class} and
-	 * {@link Long.class} if this was deserialized, use the respective getters.
+	 * Note that numbers will only be avaialable via {@link Double.class}
+	 * if this was deserialized, use the respective getters.
+	 * 
+	 * This method tries to coerce with {@link DeX#coerce(Class, Object)}
 	 * 
 	 * @param type
 	 * @param key
@@ -28,12 +43,20 @@ interface DeXIterable<E> extends Iterable<Object> {
 		return DeX.coerce(type, get(key));
 	}
 
+	/**
+	 * Same as {@link #get(Class, Object)}, but allows to pass a default value
+	 * in case {@link #hasKey(Object)} returns false.
+	 * 
+	 * @param type
+	 * @param key
+	 * @param def
+	 * @return
+	 */
 	default <T> T get(Class<T> type, E key, T def) {
 		Object obj = get(key);
 		if (obj == null)
 			return def;
-		else
-			return DeX.coerce(type, obj);
+		return DeX.coerce(type, obj);
 	}
 	
 	default DeXTable getTable(E key) {
@@ -41,7 +64,11 @@ interface DeXIterable<E> extends Iterable<Object> {
 	}
 
 	default String getString(E key, String def) {
-		return get(String.class, key, def);
+		Object obj = get(key);
+		if (obj == null) return def;
+		else if (obj instanceof Boolean || obj instanceof Double) 
+			return obj.toString();
+		throw new RuntimeException();
 	}
 
 	default String getString(E key) {

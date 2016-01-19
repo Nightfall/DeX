@@ -2,12 +2,10 @@ package moe.nightfall.dex;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -22,23 +20,18 @@ public final class DeX {
 		if (o == null) return null;
 		if (target.isInstance(o)) {
 			return (T) o;
-		} else if (CharSequence.class.isAssignableFrom(target)) {
-			return (T) o.toString();
-		} else if (o instanceof DeXTable) {
-			if (DeXArray.class.isAssignableFrom(target)) return (T)((DeXTable)o).values();
-			else return deserialize((DeXTable)o);
 		}
-		throw new ClassCastException("Object " + o + " is not coerable into class " + target);
+		if (o instanceof DeXTable) {
+			return StaticSerialization.get(target).deserialize((DeXTable) o);
+		}
+		throw new IllegalArgumentException(o + " cant be coerced into " + target);
 	}
 	
 	@SuppressWarnings("unchecked")
 	// FIXME This in unchecked and I probably can't tell if it fails due to an incorrect
 	// cast, might want to add a class parameter to this
-	public static <T> T deserialize(DeXTable table) {
-		if (table.serialization == null) {
-			throw new IllegalArgumentException("Couldn't deserialize table with the tag type of \"" + table.tag() + "\", no deserialization provided");
-		}
-		return (T) table.serialization.byTable(table).deserialize(table);
+	public static <T> T deserialize(DeXTable table, SerializationMap sel) {
+		return (T) sel.byTable(table).deserialize(table);
 	}
 	
 	// Used for serialization
@@ -84,7 +77,7 @@ public final class DeX {
 		else return in;
 		
 		// Note that we can only deserialize to some default type. The method above can serialize anything.
-		if (target.isAssignableFrom(HashMap.class)) return table.copy();
+		if (target.isAssignableFrom(HashMap.class)) return table.toHashMap();
 		
 		// We can cope with the most basic collections
 		// TODO What about Vector? Or is that thing even used nowadays?
@@ -94,8 +87,6 @@ public final class DeX {
 		
 		if (target.isArray()) return tableToCollection(table).toArray();
 		
-		if (target.isAssignableFrom(HashMap.class)) return tableToMap(table);
-			
 		// Sanity check
 		if (target == DeXTable.class) return table;
 		if (target == DeXArray.class) return table.values();
@@ -117,31 +108,12 @@ public final class DeX {
 	}
 	
 	public static Collection<?> tableToCollection(DeXTable table) {
-		List<Object> list = new ArrayList<>(table.size());
-		for (Object o : table.toDeXArray()) {
-			// Try to automatically deserialize
-			if (o instanceof DeXTable) 
-				o = ((DeXTable) o).deserialize();
-			list.add(o);
-		}
-		return list;
+		return table.values();
 	}
 	
 	public static HashMap<?, ?> tableToMap(DeXTable table) {
-		HashMap<Object, Object> map = new HashMap<>(table.size());
-		for(Entry<Object, Object> entry : table.entrySet()) {
-			Object k = entry.getKey();
-			Object v = entry.getValue();
-			
-			// Try to automatically deserialize
-			if (k instanceof DeXTable) 
-				k = ((DeXTable) k).deserialize();
-			if (v instanceof DeXTable) 
-				v = ((DeXTable) v).deserialize();
-			
-			map.put(k, v);
-		}
-		return map;
+		if (table == null) return null;
+		return table.toHashMap();
 	}
 	
 	public static DeXTable arrayToTable(Object[] array, SerializationMap sel) {
@@ -192,7 +164,7 @@ public final class DeX {
 				}
 			}
 		}
-		return Collections.unmodifiableCollection(ret);
+		return ret;
 	}
 	
 	public static String prettyPrint(DeXTable table) {
@@ -230,6 +202,36 @@ public final class DeX {
 			if (level > 0) for (int j = 0; j < level - 2; j++) sb.append(" "); 
 		} else sb.append(' ');
 		
+		sb.append('}');
+	}
+	
+	public static String print(DeXTable table) {
+		StringBuilder builder = new StringBuilder();
+		print(table, builder);
+		return builder.toString();
+	}
+	
+	public static void print(DeXTable table, StringBuilder sb) {
+		boolean array = table.isArray();
+		if (table.hasTag()) sb.append(table.tag).append("{");
+		else sb.append("{");
+		
+		boolean first = true;
+		for (Entry<Object, Object> entry : table.entrySet()) {
+			if (!first && array) {
+				sb.append(",");
+			} else first = false;
+			
+			if (!array) {
+				if (entry.getKey() instanceof DeXTable) {
+					print((DeXTable) entry.getKey(), sb);
+				} else print(entry.getKey(), sb, false);
+				sb.append(":");
+			}
+			if (entry.getValue() instanceof DeXTable) {
+				print((DeXTable) entry.getValue(), sb);
+			} else print(entry.getValue(), sb, false);
+		}
 		sb.append('}');
 	}
 	
