@@ -1,5 +1,6 @@
 package moe.nightfall.dex;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -235,6 +236,8 @@ public final class DeX {
 		sb.append('}');
 	}
 	
+	private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("0.#");
+	
 	private static void print(Object o, StringBuilder sb, boolean pretty) {
 		if (o instanceof String) {
 			String s = (String) o;
@@ -269,7 +272,9 @@ public final class DeX {
 				sb.append('"');
 			}
 		} else {
-			sb.append(o.toString());
+			if (o instanceof Number) {
+				sb.append(DOUBLE_FORMAT.format(((Number)o).doubleValue()));
+			} else sb.append(o.toString());
 		}
 	}
 	
