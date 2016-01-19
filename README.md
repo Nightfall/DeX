@@ -17,6 +17,7 @@ Floating ponts, exponents, as well as NaN and Infinity are also supported.
 1e10, 1E10  # Exponent
 Infinity, -Infinity, NaN
 ```
+A number is represented as IEEE 754 64-bit floating point.
 
 #### Booleans
 Booleans of yes/no, true/false, on/off are supported.
