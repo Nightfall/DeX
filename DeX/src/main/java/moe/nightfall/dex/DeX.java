@@ -1,12 +1,14 @@
 package moe.nightfall.dex;
 
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -49,9 +51,7 @@ public final class DeX {
 		if (in instanceof Iterable) return iterableToTable((Iterable<?>)in, sel);
 		if (in instanceof Map) return mapToTable((Map<?, ?>)in, sel);
 		
-		// Sanity check
-		if (in instanceof DeXTable) return in;
-		if (in instanceof DeXArray) return ((DeXArray)in).toDeXTable();
+		if (in instanceof DeXArray) return mapToTable(((DeXArray)in).toDeXTable(), sel);
 
 		// Raw types because generics are too dump to handle this
 		return StaticSerialization.get((Class)in.getClass()).serialize(in, sel);
@@ -88,7 +88,6 @@ public final class DeX {
 		
 		if (target.isArray()) return tableToCollection(table).toArray();
 		
-		// Sanity check
 		if (target == DeXTable.class) return table;
 		if (target == DeXArray.class) return table.values();
 				
@@ -176,8 +175,10 @@ public final class DeX {
 	
 	private static void prettyPrint(DeXTable table, StringBuilder sb, int level) {
 		boolean array = table.isArray();
-		if (table.hasTag()) sb.append(table.tag).append(" { ");
-		else sb.append("{ ");
+		if (table.hasTag()) {
+			print(table.tag(), sb, true);
+			sb.append(" { ");
+		} else sb.append("{ ");
 		if (!array) sb.append('\n');
 		
 		boolean first = true;
@@ -214,12 +215,14 @@ public final class DeX {
 	
 	public static void print(DeXTable table, StringBuilder sb) {
 		boolean array = table.isArray();
-		if (table.hasTag()) sb.append(table.tag).append("{");
-		else sb.append("{");
+		if (table.hasTag()) {
+			print(table.tag(), sb, false);
+		}
+		sb.append("{");
 		
 		boolean first = true;
 		for (Entry<Object, Object> entry : table.entrySet()) {
-			if (!first && array) {
+			if (!first) {
 				sb.append(",");
 			} else first = false;
 			
@@ -236,7 +239,7 @@ public final class DeX {
 		sb.append('}');
 	}
 	
-	private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("0.#");
+	private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
 	
 	private static void print(Object o, StringBuilder sb, boolean pretty) {
 		if (o instanceof String) {

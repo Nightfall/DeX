@@ -1,11 +1,11 @@
 package moe.nightfall.dex;
 
 import java.util.AbstractMap;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -19,8 +19,7 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	private DeXArray array;
 	private boolean isArray = true;
 	
-	/** This should not be modified for immutability reasons. The only exception is when serializing */
-	String tag;
+	private final String tag;
 	
 	public static DeXTable create(Map<?, ?> m) {
 		return create(m, "");
@@ -39,7 +38,7 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	}
 	
 	public static DeXTable create(Object... array) {
-		return builder().addAll(Arrays.asList(array)).create();
+		return builder().addAll(array).create();
 	}
 	
 	/** Internal constructor for TableBuilder */
@@ -91,6 +90,11 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		
 		public Builder addAll(Iterable<?> iterable) {
 			for (Object o : iterable) add(o);
+			return this;
+		}
+		
+		public Builder addAll(Object... values) {
+			for (Object o : values) add(o);
 			return this;
 		}
 		
@@ -160,6 +164,16 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		return values();
 	}
 	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof DeXIterable) {
+			DeXIterable<?> di = (DeXIterable<?>) o;
+			if (!Objects.equals(tag(), di.tag())) 
+				return false;
+		}
+		return super.equals(o);
+	}
+
 	public <T extends DeXSerializable> T deserialize(Class<T> target) {
 		return (T) DeX.toJava(target, this);
 	}

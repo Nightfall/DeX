@@ -182,6 +182,7 @@ interface DeXIterable<E> extends Iterable<Object> {
 		return getString(key).charAt(0);
 	}
 
+	// TODO You can't return tables if they've been serialized, baka
 	default DeXTable getByTag(String tag) {
 		return DeX.getByTag(this, tag);
 	}

@@ -40,11 +40,13 @@ public class DeXParserTest {
 		Timer timer = new Timer();
 		DeXTable table = parser.parse(source);
 		timer.diff();
-		System.out.println("Result: " + table.toString());
+
+		System.out.println("Result: " + table.prettyPrint());
+		System.out.println("Raw: " + table.print());
 		
 		DeXTable expected = DeXTable.builder()
-			.put("MAYU", DeXTable.builder()
-				.add(DeXTable.create("yandere", "lolita", "gothic", "small"))
+			.put("MAYU", DeXTable.builder("vocaloid")
+				.put("taglist", DeXTable.builder("taglist").addAll("yandere", "lolita", "gothic", "small").create())
 				
 				.put("gender", "female")
 				.put("age", 15)
@@ -56,9 +58,8 @@ public class DeXParserTest {
 					"  MAYU's design is based on gothic lolita fashion.\n" +
 					"  Her hair itself fades from a light blonde to rainbow,\n" +
 					"  and she is depicted with a hat that has a speaker attached.\n" +
-					"  Her earrings appear to be styled like in-ear headphones that hook over the ear.\n" +
-					"\"\n")
-				.create()
+					"  Her earrings appear to be styled like in-ear headphones that hook over the ear.\n"
+				).create()
 			).create();
 		
 		assertThat(table.equals(expected)).isTrue();

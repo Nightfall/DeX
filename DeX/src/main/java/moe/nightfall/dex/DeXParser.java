@@ -15,10 +15,18 @@ public class DeXParser {
 	
 	private SerializationMap serialization = new SerializationMap();
 	
+	/** This flag treats [] like {} which allows the parser to read JSON, useful for conversion */
+	private boolean parseJSON = false;
+	
 	private DeXParser() {}
 	
 	public static DeXParser create() {
 		return new DeXParser();
+	}
+	
+	public DeXParser parseJSON() {
+		this.parseJSON = true;
+		return this;
 	}
 	
 	public DeXParser setSerializationMap(SerializationMap map) {
@@ -33,6 +41,15 @@ public class DeXParser {
 	
 	public DeXTable serialize(Object o) {
 		return (DeXTable) DeX.toDeX(o, serialization);
+	}
+	
+	/** 
+	 * Use this to serialize the contents of a {@link DeXTable}.
+	 * After this operation is done, you can turn the {@link DeXTable}
+	 * into a {@code String} by calling {@link DeXTable#print()} or {@link DeXTable#prettyPrint()}.
+	 */
+	public DeXTable serialize(DeXTable table) {
+		return DeX.mapToTable(table, serialization);
 	}
 	
 	/** Mutable table for parsing */
@@ -343,7 +360,13 @@ public class DeXParser {
 						d.pushTable();
 					} else if (c == '}') {
 						d.popTable();
-					} else d.push(c);
+					} else {
+						if (parseJSON) {
+							// Treat [] like {} to read JSON
+							if (c == '[') d.pushTable();
+							else if(c == ']') d.popTable();
+						} else d.push(c);
+					}
 				} else {
 					d.push(c);
 				}
