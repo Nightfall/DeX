@@ -14,22 +14,11 @@ import moe.nightfall.dex.DeXSerializable.SerializationMap;
 public class DeXParser {
 	
 	private SerializationMap serialization = new SerializationMap();
-	private boolean skipKeyValidation = false;
 	
 	private DeXParser() {}
 	
 	public static DeXParser create() {
 		return new DeXParser();
-	}
-	
-	/**
-	 * This skips validation of duplicate keys, makes
-	 * parsing slightly faster at the cost of parsing
-	 * files that do not comply with the standard.
-	 */
-	public DeXParser skipKeyValidation() {
-		skipKeyValidation = true;
-		return this;
 	}
 	
 	public DeXParser setSerializationMap(SerializationMap map) {
@@ -236,6 +225,11 @@ public class DeXParser {
 		Object coerce(StringBuilder value) {
 			String s = value.toString();
 			s = stripTrailingWhitespace(s);
+			
+			if (!stringContext) {
+				Double number = DeX.parseDeXNumber(s);
+				if (number != null) return number;
+			}
 			return s;
 		}
 		

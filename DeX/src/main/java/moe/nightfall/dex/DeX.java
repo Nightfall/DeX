@@ -277,7 +277,7 @@ public final class DeX {
 			} else sb.append(o.toString());
 		}
 	}
-	
+			
 	private static String escape(char c) {
 		switch (c) {
 	      case '\"': return "\\\"";
@@ -289,5 +289,134 @@ public final class DeX {
 	      case '\\': return "\\\\";
 		}
 		return null;
+	}
+	
+	// Static values for parsing, sadly we can't use builtin methods because they don't support non decimal fractions
+	private static final char CHARS_NAN[] = "NaN".toCharArray();
+	private static final char CHARS_INFINITY[] = "Infinity".toCharArray();
+	
+	public static Double parseDeXNumber(String s) {
+		int i = 0;
+		char[] chars = s.toCharArray();
+		
+		// Those are all things that can only happen once
+		boolean hasSign = false;
+		boolean hasExponent = false;
+		boolean hasFractional = false;
+		
+		if (chars[i] == '-') {
+			hasSign = true;
+			i++;
+		} else if (chars[i] == '+') i++; //+ Are generally ignored, why'd you need them anyways?
+		
+		// Check for NaN & Infinity
+		if (chars[i] == 'N') {
+			int j = 0;
+			for (; i < chars.length; j++, i++) {
+				if (j >= CHARS_NAN.length) return null;
+				if (chars[i] != CHARS_NAN[j]) return null;
+			}
+			if (j < CHARS_NAN.length - 1) return null;
+			return Double.NaN;
+		}
+		if (chars[i] == 'I') {
+			int j = 0;
+			for (; i < chars.length; j++, i++) {
+				if (j >= CHARS_INFINITY.length) return null;
+				if (chars[i] != CHARS_INFINITY[j]) return null;
+			}
+			if (j < CHARS_INFINITY.length - 1) return null;
+			return hasSign ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+		}
+		
+		// Check radix
+		int radix = 10;
+		if (chars[i] == '0') {
+			// This is a 0
+			if (i + 1 == chars.length) return 0D;
+			
+			switch (chars[i + 1]) {
+			case 'x': radix = 16; i++; break;
+			case 'o': radix = 8; i++; break;
+			case 'b': radix = 2; i++;
+			}
+		}
+		
+		double result = 0;
+		long fraction = 0;
+		int exponent = 0;
+		
+		for (; i < chars.length; i++) {
+			char c = chars[i];
+			if (c == '.') {
+				hasFractional = true; i++; break;
+			}
+			if (c == 'e' || c == 'E') {
+				// This is invalid
+				if (radix == 2) return null;
+				// We have an exponent
+				if (radix == 10) {
+					hasExponent = true; i++; break;
+				}
+				// If this is hexadecimal, we just continue as normal
+			}
+			int digit = Character.digit(c, radix);
+			// If this is an invalid digit, we don't contiue;
+			if (digit == -1) return null;
+			result = result * radix + digit;
+		}
+		if (hasSign) result = Math.copySign(result, -1);
+		
+		int fractionDigits = 0;
+		
+		if (hasFractional) {
+			for (; i < chars.length; i++) {	
+				char c = chars[i];
+				// Check for exponents, once again
+				if (c == 'e' || c == 'E') {
+					// This is invalid
+					if (radix == 2) return null;
+					// We have an exponent
+					if (radix == 10) {
+						hasExponent = true; i++; break;
+					}
+					// If this is hexadecimal, we just continue as normal
+				}
+				
+				int digit = Character.digit(c, radix);
+				// If this is an invalid digit, we don't contiue;
+				if (digit == -1) return null;
+				fraction = fraction * radix + digit;
+				fractionDigits++;
+			}
+			
+			// Add fraction
+			result += fraction / (double)(Math.pow(radix, fractionDigits));
+		}
+		
+		// The exponenet can have a different sign, so reset this one
+		hasSign = false;
+		if (hasExponent) {
+			
+			if (chars[i] == '-') {
+				hasSign = true;
+				i++;
+			} else if (chars[i] == '+') i++; //+ Are generally ignored, why'd you need them anyways?
+			
+			for (; i < chars.length; i++) {	
+				char c = chars[i];
+				
+				int digit = Character.digit(c, radix);
+				// If this is an invalid digit, we don't contiue;
+				if (digit == -1) return null;
+				exponent = exponent * radix + digit;
+			}
+			
+			if (hasSign) exponent = -exponent;
+			// Add exponent
+			result *= Math.pow(radix, exponent);
+		}
+		
+		return result;
 	}
 }
