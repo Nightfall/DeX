@@ -59,9 +59,4 @@ public final class DeXArray extends AbstractList<Object> implements DeXIterable<
 	public String toString() {
 		return DeX.prettyPrint(table);
 	}
-	
-	@Override
-	public String print() {
-		return DeX.print(table);
-	}
 }

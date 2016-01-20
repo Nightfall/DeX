@@ -36,15 +36,15 @@ public class DeXSerializableTest {
 			.put("list", DeXTable.create(1, 2, "abc", 4, "def"))
 			.create();
 		
-		DeXTable serialized = parser.serialize(map);
+		DeXTable serialized = parser.decompose(map);
 		System.out.println("Result: " + serialized);
 		assertThat(serialized.equals(expected));
 	}
 	
 	@Test
 	public void testDefaultSerialization() {
-		DeXTable serialized = parser.serialize(new Point(1, 2));
-		Point ret = serialized.deserialize(Point.class);
+		DeXTable serialized = parser.decompose(new Point(1, 2));
+		Point ret = serialized.compose(Point.class);
 		
 		assertThat(ret).isEqualTo(new Point(1, 2));
 	}
@@ -52,11 +52,10 @@ public class DeXSerializableTest {
 	@Test
 	public void testAutomaicSerialization() {
 		parser.serializeTagAs("point", Point.class);
-		DeXTable table = parser.serialize(new Point(100, 100));
-		
+		DeXTable table = parser.decompose(new Point(100, 100));
 		assertThat(table.equals(DeXTable.builder("point").put("x", 100).put("y", 100).create())).isTrue();
 		
-		String output = table.prettyPrint();
+		String output = table.toString();
 		DeXTable table2 = parser.parse(output);
 		
 		assertThat(table2.get(0)).isInstanceOf(Point.class);

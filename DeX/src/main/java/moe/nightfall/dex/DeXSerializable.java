@@ -149,7 +149,7 @@ public interface DeXSerializable {
 			for (Field f : fields) {
 				try {
 					if (!f.isAccessible()) f.setAccessible(true);
-					builder.put(f.getName(), DeX.toDeX(f.get(obj), map));
+					builder.put(f.getName(), DeX.decompose(f.get(obj), map));
 				} catch (Exception e) {
 					throw new RuntimeException("Error while trying to serialize Object: ", e);
 				}
@@ -163,7 +163,7 @@ public interface DeXSerializable {
 				T obj = clazz.newInstance();
 				for (Field f : fields) {
 					if (!f.isAccessible()) f.setAccessible(true);
-					f.set(obj, DeX.toJava(f.getType(), table.get(f.getName())));
+					f.set(obj, DeX.compose(f.getType(), table.get(f.getName())));
 				}
 				return obj;
 			} catch (Exception e) {

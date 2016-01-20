@@ -174,8 +174,8 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		return super.equals(o);
 	}
 
-	public <T> T deserialize(Class<T> target) {
-		return (T) DeX.toJava(target, this);
+	public <T> T compose(Class<T> target) {
+		return (T) DeX.compose(target, this);
 	}
 	
 	/** This returns a copy of the table as Java HashMap */
@@ -186,10 +186,5 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	@Override
 	public String toString() {
 		return DeX.prettyPrint(this);
-	}
-	
-	@Override
-	public String print() {
-		return DeX.print(this);
 	}
 }

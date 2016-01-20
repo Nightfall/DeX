@@ -41,8 +41,8 @@ public class DeXParserTest {
 		DeXTable table = parser.parse(source);
 		timer.diff();
 
-		System.out.println("Result: " + table.prettyPrint());
-		System.out.println("Raw: " + table.print());
+		System.out.println("Result: " + table);
+		System.out.println("Raw: " + DeX.print(table));
 		
 		DeXTable expected = DeXTable.builder()
 			.put("MAYU", DeXTable.builder("vocaloid")

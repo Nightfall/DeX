@@ -14,12 +14,6 @@ interface DeXIterable<E> extends Iterable<Object> {
 	Object get(E key);
 
 	String tag();
-	
-	String print();
-	
-	default String prettyPrint() {
-		return toString();
-	}
 
 	default boolean hasTag() {
 		return tag().length() > 0;

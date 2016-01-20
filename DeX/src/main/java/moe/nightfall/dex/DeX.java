@@ -41,11 +41,11 @@ public final class DeX {
 	
 	// Used for serialization
 	
-	public static Object toDeX(Object in) {
-		return toDeX(in, SerializationMap.empty);
+	public static Object decompose(Object in) {
+		return decompose(in, SerializationMap.empty);
 	}
 	
-	public static Object toDeX(Object in, SerializationMap sel) {
+	public static Object decompose(Object in, SerializationMap sel) {
 		if (in == null) return null;
 		if (isPrimitive(in)) return in;
 		
@@ -70,7 +70,7 @@ public final class DeX {
 		}
 	}
 	
-	public static Object toJava(Object in, SerializationMap sel) {
+	public static Object compose(Object in, SerializationMap sel) {
 		if (in instanceof DeXTable) {
 			DeXTable table = (DeXTable) in;
 			Serializer<?> ser = sel.byTable(table);
@@ -107,7 +107,7 @@ public final class DeX {
 	/**
 	 * This is used for deserialization
 	 */
-	public static Object toJava(Class<?> target, Object in) {
+	public static Object compose(Class<?> target, Object in) {
 		
 		if (in == null) return null;
 		target = wrap(target);
@@ -163,7 +163,7 @@ public final class DeX {
 	public static DeXTable arrayToTable(Object[] array, SerializationMap sel) {
 		DeXTable.Builder builder = DeXTable.builder("", array.length);
 		for(int i = 0; i < array.length; i++) {
-			builder.add(toDeX(array[i], sel));
+			builder.add(decompose(array[i], sel));
 		}
 		return builder.create();
 	}
@@ -174,7 +174,7 @@ public final class DeX {
 		Iterator<?> iterator = iterable.iterator();
 		
 		while (iterator.hasNext()) {
-			builder.add(toDeX(iterator.next(), sel));
+			builder.add(decompose(iterator.next(), sel));
 		}
 		
 		return builder.create();
@@ -183,7 +183,7 @@ public final class DeX {
 	public static DeXTable mapToTable(Map<?, ?> map, SerializationMap sel) {
 		DeXTable.Builder builder = DeXTable.builder("", map.size());
 		for (Entry<?, ?> entry : map.entrySet()) {
-			builder.put(toDeX(entry.getKey(), sel), toDeX(entry.getValue(), sel));
+			builder.put(decompose(entry.getKey(), sel), decompose(entry.getValue(), sel));
 		}
 		return builder.create();
 	}
@@ -249,6 +249,11 @@ public final class DeX {
 		} else sb.append(' ');
 		
 		sb.append('}');
+	}
+	
+	public static String print(DeXTable table, boolean pretty) {
+		if (pretty) return prettyPrint(table);
+		else return print(table);
 	}
 	
 	public static String print(DeXTable table) {

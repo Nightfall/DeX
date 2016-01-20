@@ -18,14 +18,21 @@ public class DeXParser {
 	/** This flag treats [] like {} which allows the parser to read JSON, useful for conversion */
 	private boolean parseJSON = false;
 	
+	private boolean prettyPrint = false;
+	
 	private DeXParser() {}
 	
 	public static DeXParser create() {
 		return new DeXParser();
 	}
 	
-	public DeXParser parseJSON() {
-		this.parseJSON = true;
+	public DeXParser parseJSON(boolean parseJSON) {
+		this.parseJSON = parseJSON;
+		return this;
+	}
+	
+	public DeXParser prettyPrint(boolean prettyPrint) {
+		this.prettyPrint = prettyPrint;
 		return this;
 	}
 	
@@ -34,22 +41,25 @@ public class DeXParser {
 		return this;
 	}
 	
+	public SerializationMap getSerializationMap() {
+		return serialization;
+	}
+	
 	public DeXParser serializeTagAs(String tag, Class<?> serializedClass) {
 		serialization.put(tag, serializedClass);
 		return this;
 	}
 	
-	public DeXTable serialize(Object o) {
-		return (DeXTable) DeX.toDeX(o, serialization);
+	public DeXTable decompose(Object o) {
+		return DeX.ensure(DeX.decompose(o, serialization));
 	}
 	
-	/** 
-	 * Use this to serialize the contents of a {@link DeXTable}.
-	 * After this operation is done, you can turn the {@link DeXTable}
-	 * into a {@code String} by calling {@link DeXTable#print()} or {@link DeXTable#prettyPrint()}.
-	 */
-	public DeXTable serialize(DeXTable table) {
-		return DeX.mapToTable(table, serialization);
+	public String serialize(Object o) {
+		return DeX.print(decompose(o), prettyPrint);
+	}
+	
+	public String serialize(DeXTable table) {
+		return DeX.print(DeX.mapToTable(table, serialization), prettyPrint);
 	}
 	
 	/** Mutable table for parsing */
@@ -71,10 +81,10 @@ public class DeXParser {
 				Object key = i++;
 				if (!array) {
 					if (entry.key != null) {
-						key = DeX.toJava(entry.key, serialization);
+						key = DeX.compose(entry.key, serialization);
 					}
 				}
-				value = DeX.toJava(value, serialization);
+				value = DeX.compose(value, serialization);
 				builder.put(key, value);
 			}
 			
