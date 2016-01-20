@@ -61,7 +61,7 @@ public class DeXParserTest {
 				.create()
 			).create();
 		
-		assertThat(table.equals(expected));
+		assertThat(table.equals(expected)).isTrue();
 	}
 	
 	@Test
@@ -71,13 +71,19 @@ public class DeXParserTest {
 		// Empty array
 		table = parser.parse("{}").getTable(0);
 
-		assertThat(table.isArray());
-		assertThat(table.size() == 0);
+		assertThat(table.isArray()).isTrue();
+		assertThat(table.size() == 0).isTrue();
 		
 		// Simple array
 		table = parser.parse("{one, foo bar, three}").getTable(0);
-		assertThat(table.isArray());
-		assertThat(table.equals(DeXTable.create("one", "foo bar", "three")));
+		assertThat(table.isArray()).isTrue();
+		assertThat(table.equals(DeXTable.create("one", "foo bar", "three"))).isTrue();
+	}
+	
+	@Test
+	public void testFlags() {
+		assertThat(parser.parse("{+crazy, -sane}").getTable(0).equals(DeXTable.builder().put("crazy", true).put("sane", false).create())).isTrue();
+		
 	}
 	
 	@Test

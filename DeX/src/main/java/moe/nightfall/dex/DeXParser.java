@@ -210,8 +210,17 @@ public class DeXParser {
 					if (entry.value == null) throw new UnexpectedTokenException(index, lineNumber, source);
 					
 					RawTable table = (RawTable) parent.value;
-					if (entry.value instanceof StringBuilder)
-						entry.value = coerce((StringBuilder) entry.value);
+					if (entry.value instanceof StringBuilder) {
+						StringBuilder sb = (StringBuilder) entry.value;
+						Object value = coerce(sb);
+						if (value == null) {
+							// This is a flag
+							if (entry.key == null) {
+								entry.key = sb.substring(1);
+								entry.value = sb.charAt(0) == '+';
+							} else throw new ParseException(index, lineNumber, source, "Tried to use a flag as value, use quotes if this is supposed to be a string.");
+						} else entry.value = value;
+					}
 					table.add(entry.key, entry.value, index, lineNumber, source);
 				} else {
 					// TODO Error out
@@ -229,6 +238,17 @@ public class DeXParser {
 			if (!stringContext) {
 				Double number = DeX.parseDeXNumber(s);
 				if (number != null) return number;
+				
+				char first = s.charAt(0);
+				if (first == '-' || first == '+') {
+					// This is a flag, we have to push this as key...
+					// Of course only works if there is no key defined
+					// We return null in this case, so that pushValue can do what it has to
+					return null;
+				}
+				// Booleans
+				if (s.equals("true") || s.equals("yes") || s.equals("on")) return true;
+				if (s.equals("false") || s.equals("no") || s.equals("off")) return false;
 			}
 			return s;
 		}
