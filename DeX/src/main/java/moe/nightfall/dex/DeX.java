@@ -11,8 +11,10 @@ import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 import moe.nightfall.dex.DeXSerializable.SerializationMap;
+import moe.nightfall.dex.DeXSerializable.Serializer;
 import moe.nightfall.dex.DeXSerializable.StaticSerialization;
 
 public final class DeX {
@@ -68,10 +70,52 @@ public final class DeX {
 		}
 	}
 	
+	public static Object toJava(Object in, SerializationMap sel) {
+		if (in instanceof DeXTable) {
+			DeXTable table = (DeXTable) in;
+			Serializer<?> ser = sel.byTable(table);
+			if (ser != null) return ser.deserialize(table);
+		}
+		return in;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static <T> Class<T> wrap(Class<T> c) {
+		return c.isPrimitive() ? (Class<T>) PRIMITIVE_WRAPPERS.get(c) : c;
+	}
+
+	private static final Map<Class<?>, Class<?>> PRIMITIVE_WRAPPERS = new HashMap<>();
+	private static final Map<Class<?>, Function<Number, ?>> NUMBER_MAPPERS = new HashMap<>();
+	
+	static {
+		primitiveMapper(byte.class, Byte.class, Number::byteValue);
+		primitiveMapper(double.class, Double.class, Number::doubleValue);
+		primitiveMapper(float.class, Float.class, Number::floatValue);
+		primitiveMapper(int.class, Integer.class, Number::intValue);
+		primitiveMapper(long.class, Long.class, Number::longValue);
+		primitiveMapper(short.class, Short.class, Number::shortValue);
+		
+		PRIMITIVE_WRAPPERS.put(char.class, Character.class);
+		PRIMITIVE_WRAPPERS.put(boolean.class, Boolean.class);
+	}
+	
+	private static <T> void primitiveMapper(Class<?> primitive, Class<T> wrapper, Function<Number, T> mapper) {
+		PRIMITIVE_WRAPPERS.put(primitive, wrapper);
+		NUMBER_MAPPERS.put(wrapper, mapper);
+	}
+	
+	/**
+	 * This is used for deserialization
+	 */
 	public static Object toJava(Class<?> target, Object in) {
 		
 		if (in == null) return null;
-		if (isPrimitive(in)) return in;
+		target = wrap(target);
+		if (in instanceof Number) {
+			return NUMBER_MAPPERS.get(target).apply((Number) in);
+		}
+		if (in instanceof String) return in;
+		
 		DeXTable table = null;
 		if (in instanceof DeXTable) table = (DeXTable) in;
 		else if (in instanceof DeXArray) table = ((DeXArray) in).toDeXTable();

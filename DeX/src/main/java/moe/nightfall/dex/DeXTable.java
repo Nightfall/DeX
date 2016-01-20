@@ -174,7 +174,7 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		return super.equals(o);
 	}
 
-	public <T extends DeXSerializable> T deserialize(Class<T> target) {
+	public <T> T deserialize(Class<T> target) {
 		return (T) DeX.toJava(target, this);
 	}
 	

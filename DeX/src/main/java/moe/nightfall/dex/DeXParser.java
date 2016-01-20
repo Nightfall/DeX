@@ -34,7 +34,7 @@ public class DeXParser {
 		return this;
 	}
 	
-	public DeXParser serializeAs(String tag, Class<?> serializedClass) {
+	public DeXParser serializeTagAs(String tag, Class<?> serializedClass) {
 		serialization.put(tag, serializedClass);
 		return this;
 	}
@@ -70,8 +70,11 @@ public class DeXParser {
 				Object value = entry.value;
 				Object key = i++;
 				if (!array) {
-					if (entry.key != null) key = entry.key;
+					if (entry.key != null) {
+						key = DeX.toJava(entry.key, serialization);
+					}
 				}
+				value = DeX.toJava(value, serialization);
 				builder.put(key, value);
 			}
 			

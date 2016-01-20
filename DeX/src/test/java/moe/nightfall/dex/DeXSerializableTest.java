@@ -38,15 +38,27 @@ public class DeXSerializableTest {
 		
 		DeXTable serialized = parser.serialize(map);
 		System.out.println("Result: " + serialized);
-		assertThat(parser.serialize(map).equals(expected));
+		assertThat(serialized.equals(expected));
 	}
 	
 	@Test
 	public void testDefaultSerialization() {
-		Map<String, Object> map = new LinkedHashMap<>();
-		map.put("coordinate", new Point(1, 2));
+		DeXTable serialized = parser.serialize(new Point(1, 2));
+		Point ret = serialized.deserialize(Point.class);
 		
-		DeXTable serialized = parser.serialize(map);
-		System.out.println("Result: " + serialized);
+		assertThat(ret).isEqualTo(new Point(1, 2));
+	}
+	
+	@Test
+	public void testAutomaicSerialization() {
+		parser.serializeTagAs("point", Point.class);
+		DeXTable table = parser.serialize(new Point(100, 100));
+		
+		assertThat(table.equals(DeXTable.builder("point").put("x", 100).put("y", 100).create())).isTrue();
+		
+		String output = table.prettyPrint();
+		DeXTable table2 = parser.parse(output);
+		
+		assertThat(table2.get(0)).isInstanceOf(Point.class);
 	}
 }
