@@ -30,11 +30,18 @@ Flags are boolean properties with a shorthand syntax.
 ```
 +flag
 #Is equivalent to
-"flag" = true
+"flag" : true
 
 -flag
 #Is equivalent to
-"flag" = false
+"flag" : false
+```
+
+This means that unencapsulated strings aren't allowed to start with `+` or `-`, any other position is okay. Note that `+Infinity, -Infinity` is a number and not a flag. Flags DO keep leading whitespaces:
+
+```
++ this is equvilatent to
+" this is equivalent to" : true
 ```
 
 #### Strings
