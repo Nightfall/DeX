@@ -321,7 +321,8 @@ public class DeXParser {
 						
 						// Check if this is the first token, otherwise fail
 						Entry current = d.stack.peek();
-						if (current.value != null) throw new UnexpectedTokenException(d.index, d.lineNumber, d.source);
+						if (current.value instanceof StringBuilder) 
+							throw new UnexpectedTokenException(d.index, d.lineNumber, d.source);
 					}
 				} else if (c  == '\t' && d.stringContext) {
 					// Don't parse tab, unless in string context
