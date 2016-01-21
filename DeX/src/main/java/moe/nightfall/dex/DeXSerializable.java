@@ -25,13 +25,13 @@ public interface DeXSerializable {
 	@Target(ElementType.FIELD)
 	public static @interface Serialize {}
 	
-	public static class SerializationMap {
+	public static class Serialization {
 		
 		/** 
 		 * Use this for an immutable, empty serialization map in case you don't want
 		 * custom tag serialization
 		 */
-		public static final SerializationMap empty = new SerializationMap() {			
+		public static final Serialization empty = new Serialization() {			
 			@Override 
 			public void put(String tag, Class<?> clazz) { 
 				throw new UnsupportedOperationException(); 
@@ -43,58 +43,48 @@ public interface DeXSerializable {
 			}
 		};
 		
-		private Map<String, Serializer<?>> byTag = new HashMap<>();
+		private Map<String, Serializer<?>> serializerByTag = new HashMap<>();
 		// Reverse lookup for serialization
-		private Map<Class<?>, String> byClass = new HashMap<>();
+		private Map<Class<?>, String> tagByClass = new HashMap<>();
+		private Map<Class<?>, Serializer<?>> serializerByClass = new HashMap<>();
 		
 		public void put(String tag, Class<?> clazz) {
-			byTag.put(tag, StaticSerialization.get(clazz));
-			byClass.put(clazz, tag);
+			Serializer<?> ser = forClass(clazz);
+			serializerByTag.put(tag, ser);
+			tagByClass.put(clazz, tag);
 		}
 		
-		public <T> void put(String tag, Class<T> clazz, Serializer<T> sel) {
-			StaticSerialization.register(clazz, sel);
-			byTag.put(tag, sel);
-			byClass.put(clazz, tag);
+		public <T> void put(String tag, Class<T> clazz, Serializer<T> ser) {
+			serializerByClass.put(clazz, ser);
+			serializerByTag.put(tag, ser);
+			tagByClass.put(clazz, tag);
 		}
 		
-		public Serializer<?> byTable(DeXTable table) {
+		public Serializer<?> forTable(DeXTable table) {
 			if (!table.hasTag()) throw new IllegalArgumentException("Can not deserialize table, no tag defined");
-			Serializer<?> sel = byTag(table.tag());
+			Serializer<?> sel = forTag(table.tag());
 			if (sel == null) throw new IllegalArgumentException("Can not deserialize table, no serializer defined for tag " + table.tag());
 			return sel;
 		}
 		
-		public Serializer<?> byTag(String tag) {
-			return byTag.get(tag);
+		public Serializer<?> forTag(String tag) {
+			return serializerByTag.get(tag);
 		}
 		
 		public String tagFor(Class<?> clazz) {
-			return byClass.getOrDefault(clazz, "");
-		}
-	}
-	
-	public static class StaticSerialization {
-		private static Map<Class<?>, Serializer<?>> byClass = new HashMap<>();
-		
-		public static <T> Serializer<T> get(T o) {
-			return (Serializer<T>) get(o.getClass());
+			return tagByClass.getOrDefault(clazz, "");
 		}
 		
-		public static <T> Serializer<T> get(Class<T> clazz) {
-			Serializer<T> sel = (Serializer<T>) byClass.get(clazz);
+		public <T> Serializer<T> forClass(Class<T> clazz) {
+			Serializer<T> sel = (Serializer<T>) serializerByClass.get(clazz);
 			if (sel == null) {
 				if (DeXSerializable.class.isAssignableFrom(clazz)) {
-					byClass.put(clazz, sel = new DeXSerializerImpl(clazz));
+					serializerByClass.put(clazz, sel = new DeXSerializerImpl(clazz));
 				} else {
-					byClass.put(clazz, sel = new ClassSerializer(clazz));
+					serializerByClass.put(clazz, sel = new ClassSerializer(clazz));
 				}
 			}
 			return sel;
-		}
-		
-		public static <T> void register(Class<T> clazz, Serializer<T> serializer) {
-			byClass.put(clazz, serializer);
 		}
 	}
 	
@@ -104,7 +94,7 @@ public interface DeXSerializable {
 		 * <p>
 		 * Override this to serialize a given Object.
 		 * By convention the returned table has the tag
-		 * defined in the given {@link SerializationMap} for
+		 * defined in the given {@link Serialization} for
 		 * the class of obj.
 		 * </p><p>
 		 * Use it like this: {@code 
@@ -112,12 +102,12 @@ public interface DeXSerializable {
 		 * }
 		 * </p>
 		 */
-		public DeXTable serialize(T obj, SerializationMap sel);
+		public DeXTable serialize(T obj, Serialization sel);
 		
 		/**
 		 * Override this to deserialze a given {@link DeXTable}.
 		 */
-		public T deserialize(DeXTable table);
+		public T deserialize(DeXTable table, Serialization sel);
 	}
 	
 	// TODO Use java 8 lambdas for faster execution speed?
@@ -144,7 +134,7 @@ public interface DeXSerializable {
 		}
 
 		@Override
-		public DeXTable serialize(T obj, SerializationMap map) {
+		public DeXTable serialize(T obj, Serialization map) {
 			DeXTable.Builder builder = DeXTable.builder(map.tagFor(clazz), fields.length);
 			for (Field f : fields) {
 				try {
@@ -158,12 +148,12 @@ public interface DeXSerializable {
 		}
 
 		@Override
-		public T deserialize(DeXTable table) {
+		public T deserialize(DeXTable table, Serialization sel) {
 			try {
 				T obj = clazz.newInstance();
 				for (Field f : fields) {
 					if (!f.isAccessible()) f.setAccessible(true);
-					f.set(obj, DeX.compose(f.getType(), table.get(f.getName())));
+					f.set(obj, DeX.compose(f.getType(), table.get(f.getName()), sel));
 				}
 				return obj;
 			} catch (Exception e) {
@@ -184,13 +174,13 @@ public interface DeXSerializable {
 				if (m.getAnnotation(DeXSerializer.class) != null) {
 					if (serialize != null) throw new RuntimeException("Second serializer found in the same class!");
 					if (Modifier.isPublic(modifiers)) {
-						if (Arrays.equals(m.getParameters(), new Class[] { clazz, SerializationMap.class })) serialize = m;
+						if (Arrays.equals(m.getParameters(), new Class[] { clazz, Serialization.class })) serialize = m;
 						else throw new RuntimeException("Couldn't create serializer for class " + clazz + ", wrong argument types!");
 					} else throw new RuntimeException("Couldn't create serializer for class " + clazz + ", method is not public!");
 				} else if (m.getAnnotation(DeXDeserializer.class) != null) {
 					if (deserialize != null) throw new RuntimeException("Second deserializer found in the same class!");
 					if (Modifier.isPublic(modifiers) && Modifier.isStatic(modifiers)) {
-						if (Arrays.equals(m.getParameters(), new Class[] { DeXTable.class })) serialize = m;
+						if (Arrays.equals(m.getParameters(), new Class[] { DeXTable.class, Serialization.class })) serialize = m;
 						else throw new RuntimeException("Couldn't create deserializer for class " + clazz + ", wrong argument types!");
 					} else throw new RuntimeException("Couldn't create deserialzer for class " + clazz + ", method is not public static!");
 				}
@@ -207,7 +197,7 @@ public interface DeXSerializable {
 		}
 
 		@Override
-		public DeXTable serialize(T obj, SerializationMap sel) {
+		public DeXTable serialize(T obj, Serialization sel) {
 			if (serialize != null) {
 				try {
 					return (DeXTable) serialize.invoke(obj, sel);
@@ -218,14 +208,14 @@ public interface DeXSerializable {
 		}
 
 		@Override
-		public T deserialize(DeXTable table) {
+		public T deserialize(DeXTable table, Serialization sel) {
 			if (deserialize != null) {
 				try {
-					return (T) deserialize.invoke(null, table);
+					return (T) deserialize.invoke(null, table, sel);
 				} catch (Exception e) {
 					throw new RuntimeException("Error while trying to serialize Object: ", e);
 				}
-			} else return super.deserialize(table);
+			} else return super.deserialize(table, sel);
 		}
 	}
 }

@@ -44,7 +44,7 @@ public class DeXSerializableTest {
 	@Test
 	public void testDefaultSerialization() {
 		DeXTable serialized = parser.decompose(new Point(1, 2));
-		Point ret = serialized.compose(Point.class);
+		Point ret = serialized.compose(Point.class, parser.getSerialization());
 		
 		assertThat(ret).isEqualTo(new Point(1, 2));
 	}
@@ -54,7 +54,6 @@ public class DeXSerializableTest {
 		parser.serializeTagAs("point", Point.class);
 		DeXTable table = parser.decompose(new Point(100, 100));
 		assertThat(table.equals(DeXTable.builder("point").put("x", 100).put("y", 100).create())).isTrue();
-		
 		String output = table.toString();
 		DeXTable table2 = parser.parse(output);
 		

@@ -13,21 +13,29 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
-import moe.nightfall.dex.DeXSerializable.SerializationMap;
+import moe.nightfall.dex.DeXSerializable.Serialization;
 import moe.nightfall.dex.DeXSerializable.Serializer;
-import moe.nightfall.dex.DeXSerializable.StaticSerialization;
 
 public final class DeX {
 	private DeX() {}
 	
 	@SuppressWarnings("unchecked")
-	public static <T> T coerce(Class<T> target, Object o) {
+	public static <T> T coerce(Class<T> target, Object o, Serialization sel) {
 		if (o == null) return null;
 		if (target.isInstance(o)) {
 			return (T) o;
 		}
-		if (o instanceof DeXTable) {
-			return StaticSerialization.get(target).deserialize((DeXTable) o);
+		if (CharSequence.class.isAssignableFrom(target)) {
+			// Try to coerce strings
+			if (o instanceof Number) {
+				return (T) DOUBLE_FORMAT.format(((Number)o).doubleValue());
+			} else if (o instanceof Boolean) {
+				return (T) o.toString();
+			}
+		}
+		
+		if (o instanceof DeXTable && sel != null) {
+			return sel.forClass(target).deserialize((DeXTable) o, sel);
 		}
 		throw new IllegalArgumentException(o + " cant be coerced into " + target);
 	}
@@ -35,17 +43,17 @@ public final class DeX {
 	@SuppressWarnings("unchecked")
 	// FIXME This in unchecked and I probably can't tell if it fails due to an incorrect
 	// cast, might want to add a class parameter to this
-	public static <T> T deserialize(DeXTable table, SerializationMap sel) {
-		return (T) sel.byTable(table).deserialize(table);
+	public static <T> T deserialize(DeXTable table, Serialization sel) {
+		return (T) sel.forTable(table).deserialize(table, sel);
 	}
 	
 	// Used for serialization
 	
 	public static Object decompose(Object in) {
-		return decompose(in, SerializationMap.empty);
+		return decompose(in, Serialization.empty);
 	}
 	
-	public static Object decompose(Object in, SerializationMap sel) {
+	public static Object decompose(Object in, Serialization sel) {
 		if (in == null) return null;
 		if (isPrimitive(in)) return in;
 		
@@ -56,7 +64,7 @@ public final class DeX {
 		if (in instanceof DeXArray) return mapToTable(((DeXArray)in).toDeXTable(), sel);
 
 		// Raw types because generics are too dump to handle this
-		return StaticSerialization.get((Class)in.getClass()).serialize(in, sel);
+		return sel.forClass((Class)in.getClass()).serialize(in, sel);
 	}
 	
 	/** 
@@ -70,11 +78,13 @@ public final class DeX {
 		}
 	}
 	
-	public static Object compose(Object in, SerializationMap sel) {
+	public static Object compose(Object in, Serialization sel) {
 		if (in instanceof DeXTable) {
 			DeXTable table = (DeXTable) in;
-			Serializer<?> ser = sel.byTable(table);
-			if (ser != null) return ser.deserialize(table);
+			if (table.hasTag()) {
+				Serializer<?> ser = sel.forTag(table.tag());
+				if (ser != null) return ser.deserialize(table, sel);
+			}
 		}
 		return in;
 	}
@@ -107,7 +117,7 @@ public final class DeX {
 	/**
 	 * This is used for deserialization
 	 */
-	public static Object compose(Class<?> target, Object in) {
+	public static Object compose(Class<?> target, Object in, Serialization sel) {
 		
 		if (in == null) return null;
 		target = wrap(target);
@@ -135,7 +145,7 @@ public final class DeX {
 		if (target == DeXTable.class) return table;
 		if (target == DeXArray.class) return table.values();
 				
-		return StaticSerialization.get(target).deserialize(table);
+		return sel.forClass(target).deserialize(table, sel);
 	}
 	
 	/** Check if the supplied object is primitve, in hopefully decreasing order of popularity */
@@ -160,7 +170,7 @@ public final class DeX {
 		return table.toHashMap();
 	}
 	
-	public static DeXTable arrayToTable(Object[] array, SerializationMap sel) {
+	public static DeXTable arrayToTable(Object[] array, Serialization sel) {
 		DeXTable.Builder builder = DeXTable.builder("", array.length);
 		for(int i = 0; i < array.length; i++) {
 			builder.add(decompose(array[i], sel));
@@ -168,7 +178,7 @@ public final class DeX {
 		return builder.create();
 	}
 	
-	public static DeXTable iterableToTable(Iterable<?> iterable, SerializationMap sel) {
+	public static DeXTable iterableToTable(Iterable<?> iterable, Serialization sel) {
 		// We can't predict how long this thing is going to be
 		DeXTable.Builder builder = DeXTable.builder("", 16);
 		Iterator<?> iterator = iterable.iterator();
@@ -180,7 +190,7 @@ public final class DeX {
 		return builder.create();
 	}
 	
-	public static DeXTable mapToTable(Map<?, ?> map, SerializationMap sel) {
+	public static DeXTable mapToTable(Map<?, ?> map, Serialization sel) {
 		DeXTable.Builder builder = DeXTable.builder("", map.size());
 		for (Entry<?, ?> entry : map.entrySet()) {
 			builder.put(decompose(entry.getKey(), sel), decompose(entry.getValue(), sel));

@@ -9,11 +9,11 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.Stack;
 
-import moe.nightfall.dex.DeXSerializable.SerializationMap;
+import moe.nightfall.dex.DeXSerializable.Serialization;
 
 public class DeXParser {
 	
-	private SerializationMap serialization = new SerializationMap();
+	private Serialization serialization = new Serialization();
 	
 	/** This flag treats [] like {} which allows the parser to read JSON, useful for conversion */
 	private boolean parseJSON = false;
@@ -36,18 +36,22 @@ public class DeXParser {
 		return this;
 	}
 	
-	public DeXParser setSerializationMap(SerializationMap map) {
+	public DeXParser setSerializationMap(Serialization map) {
 		this.serialization = map;
 		return this;
 	}
 	
-	public SerializationMap getSerializationMap() {
+	public Serialization getSerialization() {
 		return serialization;
 	}
 	
 	public DeXParser serializeTagAs(String tag, Class<?> serializedClass) {
 		serialization.put(tag, serializedClass);
 		return this;
+	}
+	
+	public <T> T compose(Class<T> target, DeXTable table) {
+		return table.compose(target, serialization);
 	}
 	
 	public DeXTable decompose(Object o) {

@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import moe.nightfall.dex.DeXSerializable.Serialization;
+
 /**
  * Immutable table
  * 
@@ -174,8 +176,8 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		return super.equals(o);
 	}
 
-	public <T> T compose(Class<T> target) {
-		return (T) DeX.compose(target, this);
+	public <T> T compose(Class<T> target, Serialization sel) {
+		return (T) DeX.compose(target, this, sel);
 	}
 	
 	/** This returns a copy of the table as Java HashMap */

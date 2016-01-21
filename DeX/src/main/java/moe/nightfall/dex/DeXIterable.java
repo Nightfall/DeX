@@ -2,11 +2,15 @@ package moe.nightfall.dex;
 
 import java.util.Collection;
 
+import moe.nightfall.dex.DeXSerializable.Serialization;
+
 interface DeXIterable<E> extends Iterable<Object> {
 
 	/**
-	 * In order to comply with this interface, the implementation has to coerce
-	 * any {@link Number} to a {@link Double}
+	 * <p>In order to comply with this interface, the implementation has to coerce
+	 * any {@link Number} to a {@link Double}.</p>
+	 * 
+	 * <p>Use {@link #rec(Object)} for a cast free alternative.</p>
 	 * 
 	 * @param key
 	 * @return
@@ -22,23 +26,35 @@ interface DeXIterable<E> extends Iterable<Object> {
 	default boolean hasKey(E key) {
 		return get(key) != null;
 	}
+	
+	/** 
+	 * This method tries to autocast, note that you can
+	 * only use this with {@link Double} as the only primitive.
+	 * Use the respective getters.
+	 * 
+	 * @param key
+	 * @return
+	 */
+	default <T> T rec(E key) {
+		return (T) get(key);
+	}
 
 	/**
 	 * Note that numbers will only be avaialable via {@link Double.class}
 	 * if this was deserialized, use the respective getters.
 	 * 
-	 * This method tries to coerce with {@link DeX#coerce(Class, Object)}
+	 * This method tries to coerce with {@link DeX#coerce(Class, Object, Serialization)}
 	 * 
 	 * @param type
 	 * @param key
 	 * @return
 	 */
-	default <T> T get(Class<T> type, E key) {
-		return DeX.coerce(type, get(key));
+	default <T> T get(Class<T> type, Serialization sel, E key) {
+		return DeX.coerce(type, get(key), sel);
 	}
 
 	/**
-	 * Same as {@link #get(Class, Object)}, but allows to pass a default value
+	 * Same as {@link #get(Class, Object, Serialization)}, but allows to pass a default value
 	 * in case {@link #hasKey(Object)} returns false.
 	 * 
 	 * @param type
@@ -46,27 +62,29 @@ interface DeXIterable<E> extends Iterable<Object> {
 	 * @param def
 	 * @return
 	 */
-	default <T> T get(Class<T> type, E key, T def) {
+	default <T> T get(Class<T> type, Serialization sel, E key, T def) {
 		Object obj = get(key);
 		if (obj == null)
 			return def;
-		return DeX.coerce(type, obj);
+		return DeX.coerce(type, obj, sel);
 	}
 	
 	default DeXTable getTable(E key) {
 		return (DeXTable) get(key);
 	}
+	
+	default DeXArray getArray(E key) {
+		DeXTable table = getTable(key);
+		if (table != null && table.isArray()) return table.toDeXArray();
+		else return null;
+	}
 
 	default String getString(E key, String def) {
-		Object obj = get(key);
-		if (obj == null) return def;
-		else if (obj instanceof Boolean || obj instanceof Double) 
-			return obj.toString();
-		throw new RuntimeException();
+		return get(String.class, null, key, def);
 	}
 
 	default String getString(E key) {
-		return get(String.class, key);
+		return get(String.class, null, key);
 	}
 
 	default double getDouble(E key, double def) {
