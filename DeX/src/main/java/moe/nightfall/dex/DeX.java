@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
-import moe.nightfall.dex.DeXSerializable.Serialization;
-import moe.nightfall.dex.DeXSerializable.Serializer;
+import moe.nightfall.dex.serialize.DeXSerializable.Serializer;
+import moe.nightfall.dex.serialize.Serialization;
 
 public final class DeX {
 	private DeX() {}
@@ -48,10 +48,6 @@ public final class DeX {
 	}
 	
 	// Used for serialization
-	
-	public static Object decompose(Object in) {
-		return decompose(in, Serialization.empty);
-	}
 	
 	public static Object decompose(Object in, Serialization sel) {
 		if (in == null) return null;

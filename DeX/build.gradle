@@ -14,14 +14,14 @@ repositories {
 }
 
 dependencies {
-	testCompile "junit:junit:4.11"
+	testCompile 'junit:junit:4.11'
 	testCompile 'org.assertj:assertj-core:2.0.0'
 }
 
 test {
 	testLogging {
-		events "failed"
-		exceptionFormat "full"
+		events 'failed'
+		exceptionFormat 'full'
 	}
 }
 

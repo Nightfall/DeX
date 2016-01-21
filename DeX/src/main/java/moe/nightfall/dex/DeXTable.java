@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import moe.nightfall.dex.DeXSerializable.Serialization;
+import moe.nightfall.dex.serialize.Serialization;
 
 /**
  * Immutable table
@@ -64,9 +64,13 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 		
 		public Builder put(Object key, Object value) {
 			if (table == null) throw new IllegalStateException("Builder finished!");
+			
+			// We have no key, so we assume add
+			if (key == null && value != null) return add(value);
+			// Empty values get ignored completely
+			if (value == null) return this;
+			
 			int i = table.size();
-			if (key == null || value == null)
-				throw new IllegalArgumentException("DeXTable doesn't allow null keys or values!");
 			
 			// Coerce numbers to double for comparision
 			if (key instanceof Number) key = ((Number)key).doubleValue();

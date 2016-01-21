@@ -9,7 +9,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.Stack;
 
-import moe.nightfall.dex.DeXSerializable.Serialization;
+import moe.nightfall.dex.serialize.DeXSerializable.Serializer;
+import moe.nightfall.dex.serialize.Serialization;
 
 public class DeXParser {
 	
@@ -45,9 +46,18 @@ public class DeXParser {
 		return serialization;
 	}
 	
-	public DeXParser serializeTagAs(String tag, Class<?> serializedClass) {
-		serialization.put(tag, serializedClass);
+	public <T> DeXParser serializeTagAs(String tag, Class<T> serializedClass) {
+		serialization.serializeTagAs(tag, serializedClass);
 		return this;
+	}
+	
+	public <T> DeXParser serializeTagAs(String tag, Class<T> serializedClass, Serializer<T> ser) {
+		serialization.serializeTagAs(tag, serializedClass, ser);
+		return this;
+	}
+	
+	public <T> void serializeAs(Class<T> clazz, Serializer<T> ser) {
+		serialization.serializeAs(clazz, ser);
 	}
 	
 	public <T> T compose(Class<T> target, DeXTable table) {

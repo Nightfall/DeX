@@ -2,6 +2,9 @@ package moe.nightfall.dex;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.awt.Button;
+import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Point;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -53,10 +56,31 @@ public class DeXSerializableTest {
 	public void testAutomaicSerialization() {
 		parser.serializeTagAs("point", Point.class);
 		DeXTable table = parser.decompose(new Point(100, 100));
+		
 		assertThat(table.equals(DeXTable.builder("point").put("x", 100).put("y", 100).create())).isTrue();
+		
 		String output = table.toString();
 		DeXTable table2 = parser.parse(output);
 		
 		assertThat(table2.get(0)).isInstanceOf(Point.class);
+	}
+	
+	@Test
+	public void testComplexSerialization() {
+		
+		parser.serializeTagAs("button", Button.class);
+		
+		// Buttons are serializable
+		Button button = new Button("testButton");
+		button.setSize(120, 120);
+		button.setBackground(Color.red);
+		button.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+		button.setVisible(false);
+		
+		DeXTable table = parser.decompose(button);
+		DeXTable output = parser.parse(DeX.print(table));
+		
+		// Doesn't properly support hasCode / equals so comparing those has to be good enough
+		assertThat(output.get(0).toString()).isEqualTo(button.toString());
 	}
 }

@@ -2,7 +2,7 @@ package moe.nightfall.dex;
 
 import java.util.Collection;
 
-import moe.nightfall.dex.DeXSerializable.Serialization;
+import moe.nightfall.dex.serialize.Serialization;
 
 interface DeXIterable<E> extends Iterable<Object> {
 
