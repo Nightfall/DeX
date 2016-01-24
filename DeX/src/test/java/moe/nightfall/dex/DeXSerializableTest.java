@@ -5,10 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.Point;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import moe.nightfall.dex.serialize.DeXSerializable;
 
 public class DeXSerializableTest {
 	
@@ -38,7 +41,7 @@ public class DeXSerializableTest {
 		
 		DeXTable serialized = parser.decompose(map);
 		System.out.println("Result: " + serialized);
-		assertThat(serialized.equals(expected));
+		assertThat(serialized.equals(expected)).isTrue();
 	}
 	
 	@Test
@@ -60,5 +63,38 @@ public class DeXSerializableTest {
 		DeXTable table2 = parser.parse(output);
 		
 		assertThat(table2.get(0)).isInstanceOf(Point.class);
+	}
+	
+	static class SelTest implements DeXSerializable {
+		@Serialize int x = 10;
+		@Serialize List<String> list = Arrays.asList("this", "is", "a", "test");
+		
+		int y = 100;
+	
+		SelTest() {}
+		SelTest(int x, int y) {
+			this.x = x; this.y = y;
+		}
+	}
+	
+	@Test
+	public void testCustomSerialization() {
+		
+		SelTest test = new SelTest(10, 20);
+		
+		DeXTable table = parser.decompose(test);
+		
+		assertThat(table.equals(
+			DeXTable.builder()
+				.put("x", 10)
+				.put("list", DeXTable.create("this", "is", "a", "test"))
+				.create()
+			)
+		).isTrue();
+		
+		SelTest second = parser.compose(SelTest.class, table);
+		
+		assertThat(second.x).isEqualTo(10);
+		assertThat(second.y).isEqualTo(100);
 	}
 }
