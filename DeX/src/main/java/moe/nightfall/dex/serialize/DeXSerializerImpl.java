@@ -12,6 +12,7 @@ import moe.nightfall.dex.serialize.DeXSerializable.DeXDeserializer;
 import moe.nightfall.dex.serialize.DeXSerializable.DeXSerializer;
 import moe.nightfall.dex.serialize.DeXSerializable.Serialize;
 
+// TODO Here we can use the metafactory
 public class DeXSerializerImpl<T extends DeXSerializable> extends ClassSerializer<T> {
 	
 	private Method serialize;

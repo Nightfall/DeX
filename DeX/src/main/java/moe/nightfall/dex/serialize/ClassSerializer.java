@@ -1,5 +1,8 @@
 package moe.nightfall.dex.serialize;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -15,19 +18,50 @@ import moe.nightfall.dex.serialize.DeXSerializable.Serializer;
 // TODO Use java 8 lambdas for faster execution speed?
 public class ClassSerializer<T> implements Serializer<T> {
 	
-	protected List<Field> fields;
+	protected List<FieldCache> fields = new LinkedList<>();
+	
+	/**
+	 * Field cache, used instead of reflection
+	 */
+	protected class FieldCache {
+		String name;
+		MethodHandle getter;
+		MethodHandle setter;
+		Class<?> type;
+		
+		FieldCache(String name, Class<?> type, MethodHandle getter, MethodHandle setter) {
+			this.name = name;
+			this.getter = getter;
+			this.setter = setter;
+			this.type = type;
+		}
+	}
+	
 	protected final Class<T> clazz;
-	protected Constructor<T> ctr;
+	protected MethodHandle ctr;
 	
 	ClassSerializer(Class<T> clazz) {
+		Lookup lookup = MethodHandles.lookup();
+		
 		this.clazz = clazz;
 		try {
-			this.ctr = clazz.getDeclaredConstructor();
+			Constructor<T> ctr = clazz.getDeclaredConstructor();
 			ctr.setAccessible(true);
+			this.ctr = lookup.unreflectConstructor(ctr);
 		} catch (Exception e) {
 			throw new RuntimeException("Can't serialize class " + clazz + ", no empty constructor found.");
 		}
-		fields = genFields();
+		
+		try {
+			List<Field> reflectedFields = genFields();
+			for (Field f : reflectedFields) {
+				MethodHandle getter = lookup.unreflectGetter(f);
+				MethodHandle setter = lookup.unreflectSetter(f);
+				fields.add(new FieldCache(f.getName(), f.getType(), getter, setter));
+			}
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException("Can't serialize class " + clazz, e);
+		}
 	}
 	
 	protected List<Field> genFields() {
@@ -50,12 +84,11 @@ public class ClassSerializer<T> implements Serializer<T> {
 	@Override
 	public DeXTable serialize(T obj, Serialization map) {
 		DeXTable.Builder builder = DeXTable.builder(map.tagFor(clazz), fields.size());
-		for (Field f : fields) {
+		for (FieldCache field : fields) {
 			try {
-				if (!f.isAccessible()) f.setAccessible(true);
-				builder.put(f.getName(), DeX.decompose(f.get(obj), map));
-			} catch (Exception e) {
-				throw new RuntimeException("Error while trying to serialize Object: ", e);
+				builder.put(field.name, DeX.decompose(field.getter.invoke(obj), map));
+			} catch (Throwable t) {
+				throw new RuntimeException("Error while trying to serialize Object: ", t);
 			}
 		}
 		return builder.create();
@@ -64,14 +97,13 @@ public class ClassSerializer<T> implements Serializer<T> {
 	@Override
 	public T deserialize(DeXTable table, Serialization sel) {
 		try {
-			T obj = ctr.newInstance();
-			for (Field f : fields) {
-				if (!f.isAccessible()) f.setAccessible(true);
-				f.set(obj, DeX.compose(f.getType(), table.get(f.getName()), sel));
+			T obj = (T) ctr.invoke();
+			for (FieldCache field : fields) {
+				field.setter.invoke(obj, DeX.compose(field.type, table.get(field.name), sel));
 			}
 			return obj;
-		} catch (Exception e) {
-			throw new RuntimeException("Error while trying to deserialize from table: ", e);
+		} catch (Throwable t) {
+			throw new RuntimeException("Error while trying to deserialize from table: ", t);
 		}
 	}
 }
