@@ -3,6 +3,7 @@ package moe.nightfall.dex.serialize;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -24,10 +25,10 @@ public class ClassSerializer<T> implements Serializer<T> {
 	 * Field cache, used instead of reflection
 	 */
 	protected class FieldCache {
-		String name;
-		MethodHandle getter;
-		MethodHandle setter;
-		Class<?> type;
+		final String name;
+		final MethodHandle getter;
+		final MethodHandle setter;
+		final Class<?> type;
 		
 		FieldCache(String name, Class<?> type, MethodHandle getter, MethodHandle setter) {
 			this.name = name;
@@ -55,8 +56,8 @@ public class ClassSerializer<T> implements Serializer<T> {
 		try {
 			List<Field> reflectedFields = genFields();
 			for (Field f : reflectedFields) {
-				MethodHandle getter = lookup.unreflectGetter(f);
-				MethodHandle setter = lookup.unreflectSetter(f);
+				MethodHandle getter = lookup.unreflectGetter(f).asType(MethodType.methodType(Object.class, Object.class));
+				MethodHandle setter = lookup.unreflectSetter(f).asType(MethodType.methodType(void.class, Object.class, Object.class));
 				fields.add(new FieldCache(f.getName(), f.getType(), getter, setter));
 			}
 		} catch (IllegalAccessException e) {
@@ -86,7 +87,7 @@ public class ClassSerializer<T> implements Serializer<T> {
 		DeXTable.Builder builder = DeXTable.builder(map.tagFor(clazz), fields.size());
 		for (FieldCache field : fields) {
 			try {
-				builder.put(field.name, DeX.decompose(field.getter.invoke(obj), map));
+				builder.put(field.name, DeX.decompose(field.getter.invokeExact(obj), map));
 			} catch (Throwable t) {
 				throw new RuntimeException("Error while trying to serialize Object: ", t);
 			}
@@ -99,7 +100,7 @@ public class ClassSerializer<T> implements Serializer<T> {
 		try {
 			T obj = (T) ctr.invoke();
 			for (FieldCache field : fields) {
-				field.setter.invoke(obj, DeX.compose(field.type, table.get(field.name), sel));
+				field.setter.invokeExact(obj, DeX.compose(field.type, table.get(field.name), sel));
 			}
 			return obj;
 		} catch (Throwable t) {
