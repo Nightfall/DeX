@@ -72,9 +72,19 @@ If no key is provided, the index will be treated as numeric key (starting from 0
 Tagged tables will have their tag type treated as key, *but only if not in array context!*
 
 ```
-tag { ... }
+{
+  tag { ... }
+}
 #Is equivalent to
-"tag": "tag" { ... }
+0: { 0: "tag" { ... } }
+
+{
+  tag { ... }
+  # Map context
+  key: value
+}
+#Is equivalent to
+0: { "tag": "tag" { ... }, "key": "value" }
 
 Foo
 #Is equivalent to
