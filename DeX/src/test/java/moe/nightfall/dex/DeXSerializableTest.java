@@ -11,7 +11,9 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 
+import moe.nightfall.dex.serialize.ClassSerializer;
 import moe.nightfall.dex.serialize.DeXSerializable;
+import moe.nightfall.dex.serialize.Serialization;
 
 public class DeXSerializableTest {
 	
@@ -70,10 +72,24 @@ public class DeXSerializableTest {
 		@Serialize List<String> list = Arrays.asList("this", "is", "a", "test");
 		
 		int y = 100;
+		boolean unserialized = false;
 	
 		SelTest() {}
 		SelTest(int x, int y) {
 			this.x = x; this.y = y;
+		}
+		
+		@DeXSerializer
+		DeXTable serialize(Serialization sel) {
+			DeXTable table = ClassSerializer.serialize((ClassSerializer<SelTest>) sel.forClass(SelTest.class), this, sel);
+			return table.copy().put("serialized", true).create();
+		}
+		
+		@DeXDeserializer
+		static SelTest deserialize(DeXTable table, Serialization sel) {
+			SelTest test = ClassSerializer.deserialize((ClassSerializer<SelTest>) sel.forClass(SelTest.class), table, sel);
+			test.unserialized = true;
+			return test;
 		}
 	}
 	
@@ -88,6 +104,7 @@ public class DeXSerializableTest {
 			DeXTable.builder()
 				.put("x", 10)
 				.put("list", DeXTable.create("this", "is", "a", "test"))
+				.put("serialized", true)
 				.create()
 			)
 		).isTrue();
@@ -96,5 +113,6 @@ public class DeXSerializableTest {
 		
 		assertThat(second.x).isEqualTo(10);
 		assertThat(second.y).isEqualTo(100);
+		assertThat(second.unserialized).isTrue();
 	}
 }

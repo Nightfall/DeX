@@ -81,13 +81,20 @@ public class ClassSerializer<T> implements Serializer<T> {
 		}
 		return fields;
 	}
-
-	@Override
-	public DeXTable serialize(T obj, Serialization map) {
-		DeXTable.Builder builder = DeXTable.builder(map.tagFor(clazz), fields.size());
+	
+	public static <T> DeXTable serialize(ClassSerializer<T> cls, T obj, Serialization sel) {
+		return cls.rawSerialize(obj, sel);
+	}
+	
+	public static <T> T deserialize(ClassSerializer<T> cls, DeXTable table, Serialization sel) {
+		return cls.rawDeserialize(table, sel);
+	}
+	
+	private DeXTable rawSerialize(T obj, Serialization sel) {
+		DeXTable.Builder builder = DeXTable.builder(sel.tagFor(clazz), fields.size());
 		for (FieldCache field : fields) {
 			try {
-				builder.put(field.name, DeX.decompose(field.getter.invokeExact(obj), map));
+				builder.put(field.name, DeX.decompose(field.getter.invokeExact(obj), sel));
 			} catch (Throwable t) {
 				throw new RuntimeException("Error while trying to serialize Object: ", t);
 			}
@@ -96,7 +103,11 @@ public class ClassSerializer<T> implements Serializer<T> {
 	}
 
 	@Override
-	public T deserialize(DeXTable table, Serialization sel) {
+	public DeXTable serialize(T obj, Serialization map) {
+		return rawSerialize(obj, map);
+	}
+	
+	public T rawDeserialize(DeXTable table, Serialization sel) {
 		try {
 			T obj = (T) ctr.invoke();
 			for (FieldCache field : fields) {
@@ -106,5 +117,10 @@ public class ClassSerializer<T> implements Serializer<T> {
 		} catch (Throwable t) {
 			throw new RuntimeException("Error while trying to deserialize from table: ", t);
 		}
+	}
+
+	@Override
+	public T deserialize(DeXTable table, Serialization sel) {
+		return rawDeserialize(table, sel);
 	}
 }

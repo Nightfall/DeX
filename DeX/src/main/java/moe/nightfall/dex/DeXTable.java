@@ -54,12 +54,24 @@ public final class DeXTable extends AbstractMap<Object, Object> implements DeXIt
 	public static Builder builder(String tag) { return new Builder(16, tag); }
 	public static Builder builder() { return new Builder(16, ""); }
 	
+	public Builder copy() {
+		return new Builder(size(), tag()).addAll((Map<Object, Object>) this);
+	}
+	
+	public Builder copy(String tag) {
+		return new Builder(size(), tag).addAll((Map<Object, Object>) this);
+	}
+	
 	public static class Builder {
 		
 		private DeXTable table;
 	
 		private Builder(int size, String tag) {
-			table = new DeXTable(size, tag);
+			this.table = new DeXTable(size, tag);
+		}
+		
+		private Builder(DeXTable table) {
+			this.table = table;
 		}
 		
 		public Builder put(Object key, Object value) {
