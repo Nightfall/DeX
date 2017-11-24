@@ -69,7 +69,6 @@ you can use `\`
 A table contains key value pairs, separated by commas. Keys can be of any type, as well as the values.
 A line break is equivalent to a comma, empty lines get ignored.
 If no key is provided, the index will be treated as numeric key (starting from 0).
-Tagged tables will have their tag type treated as key, *but only if not in array context!*
 
 ```
 {
@@ -78,19 +77,10 @@ Tagged tables will have their tag type treated as key, *but only if not in array
 #Is equivalent to
 0: { 0: "tag" { ... } }
 
-{
-  tag { ... }
-  # Map context
-  key: value
-}
-#Is equivalent to
-0: { "tag": "tag" { ... }, "key": "value" }
-
 Foo
 #Is equivalent to
 0: "Foo"
 ```
-
 
 Tables can be treated like arrays or like objects.
 
